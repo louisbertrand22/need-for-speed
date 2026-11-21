@@ -422,6 +422,31 @@ export function routeBetween(world: CityWorld, a: Vec2, b: Vec2): Vec2[] {
   return out;
 }
 
+/** Drop the intermediate points of straight runs so corner fillets can use the full straight length. */
+export function simplifyCollinear(points: Vec2[], closed: boolean): Vec2[] {
+  const n = points.length;
+  if (n < 3) return points.slice();
+  const out: Vec2[] = [];
+  for (let i = 0; i < n; i++) {
+    // the first point is the start grid (and the last one the finish of open routes): always kept
+    if (i === 0 || (!closed && i === n - 1)) {
+      out.push(points[i]);
+      continue;
+    }
+    const prev = out.length > 0 ? out[out.length - 1] : points[(i - 1 + n) % n];
+    const cur = points[i];
+    const next = points[(i + 1) % n];
+    const ax = cur.x - prev.x;
+    const az = cur.z - prev.z;
+    const bx = next.x - cur.x;
+    const bz = next.z - cur.z;
+    const cross = ax * bz - az * bx;
+    const dot = ax * bx + az * bz;
+    if (Math.abs(Math.atan2(cross, dot)) > 0.008) out.push(cur);
+  }
+  return out.length >= 2 ? out : points.slice();
+}
+
 /** Replace sharp polyline corners by short arcs (quadratic Bézier fillets). */
 export function roundCorners(points: Vec2[], radius: number, closed: boolean): Vec2[] {
   const n = points.length;
@@ -487,7 +512,7 @@ export function buildEvent(world: CityWorld, def: EventDef): BuiltEvent {
     const b = raw[raw.length - 1];
     if (Math.hypot(a.x - b.x, a.z - b.z) < 0.5) raw.pop();
   }
-  const rounded = roundCorners(raw, def.mode === 'drag' ? 0 : 11, def.closed);
+  const rounded = roundCorners(simplifyCollinear(raw, def.closed), def.mode === 'drag' ? 0 : 11, def.closed);
   const pts = PolylinePath.resample(rounded, 5, def.closed);
   const route = new PolylinePath(pts, def.closed);
 

@@ -81,15 +81,17 @@ export const RACE_TUNING = {
 
 interface RaceLine {
   n: number;
-  /** route arc-length between two samples (sample i sits near route s = i × ds) */
+  /** mean distance between two samples along the line (m) */
   ds: number;
   closed: boolean;
   length: number;
-  /** ideal line points and right-hand normals */
+  /** ideal line points (uniformly spaced) and right-hand normals */
   x: Float64Array;
   z: Float64Array;
   nx: Float64Array;
   nz: Float64Array;
+  /** route arc-length of the projection of every sample */
+  rs: Float64Array;
   /** distance from sample i to sample i + 1 along the line (m) */
   seg: Float32Array;
   /** signed lateral position of the line relative to the route centre (m, + = right) */
@@ -117,7 +119,9 @@ function wrapIndex(i: number, n: number, closed: boolean): number {
  *     that sharp polyline corners get well-defined normals;
  *  2. every sample may slide along its normal between two limits found by bisection on the true
  *     distance to the route;
- *  3. a projected Gauss-Seidel relaxation minimises the bending energy (coarse → fine).
+ *  3. a projected Gauss-Seidel relaxation minimises the bending energy (coarse → fine);
+ *  4. the result is re-sampled uniformly and becomes the reference of the next round (the energy
+ *     is parameterisation dependent: a few rounds converge to the true out-in-out line).
  */
 function buildRaceLine(route: PolylinePath, halfWidth: number): RaceLine {
   const closed = route.closed;
@@ -133,6 +137,8 @@ function buildRaceLine(route: PolylinePath, halfWidth: number): RaceLine {
   const tz = new Float64Array(n);
   const nx = new Float64Array(n);
   const nz = new Float64Array(n);
+  const rs = new Float64Array(n);
+  const cum = new Float64Array(n + 1);
   const off = new Float32Array(n);
   const oMin = new Float32Array(n);
   const oMax = new Float32Array(n);
@@ -142,6 +148,7 @@ function buildRaceLine(route: PolylinePath, halfWidth: number): RaceLine {
     route.pointAt(i * ds, p);
     cx[i] = p.x;
     cz[i] = p.z;
+    rs[i] = i * ds;
   }
   const lim = Math.max(0.2, halfWidth - RACE_TUNING.edgeMargin);
 
@@ -162,7 +169,7 @@ function buildRaceLine(route: PolylinePath, halfWidth: number): RaceLine {
       tz[i] = cz[a] * 0.25 + cz[i] * 0.5 + cz[b] * 0.25;
     }
     for (let i = 0; i < n; i++) {
-      route.project(tx[i], tz[i], i * ds, 45, pr);
+      route.project(tx[i], tz[i], rs[i], 45, pr);
       if (pr.dist > keep) {
         const k = keep / pr.dist;
         tx[i] = pr.x + (tx[i] - pr.x) * k;
@@ -172,35 +179,51 @@ function buildRaceLine(route: PolylinePath, halfWidth: number): RaceLine {
       cz[i] = tz[i];
     }
   }
-  // normals of the reference line
-  for (let i = 0; i < n; i++) {
-    const a = wrapIndex(i - 2, n, closed);
-    const b = wrapIndex(i + 2, n, closed);
-    let dx = cx[b] - cx[a];
-    let dz = cz[b] - cz[a];
-    const l = Math.hypot(dx, dz) || 1;
-    dx /= l;
-    dz /= l;
-    nx[i] = -dz;
-    nz[i] = dx;
-  }
-  // --- 2. offset limits along each normal (bisection on the distance to the route)
+
+  const computeNormals = () => {
+    for (let i = 0; i < n; i++) {
+      const a = wrapIndex(i - 2, n, closed);
+      const b = wrapIndex(i + 2, n, closed);
+      let dx = cx[b] - cx[a];
+      let dz = cz[b] - cz[a];
+      const l = Math.hypot(dx, dz) || 1;
+      dx /= l;
+      dz /= l;
+      nx[i] = -dz;
+      nz[i] = dx;
+    }
+  };
+  // offset limit along a normal: bisection on the distance to the route
   const reach = (i: number, dir: number): number => {
     let lo = 0;
     let hi = 2.2 * lim + 1;
     for (let k = 0; k < 9; k++) {
       const mid = (lo + hi) * 0.5;
-      route.project(cx[i] + nx[i] * mid * dir, cz[i] + nz[i] * mid * dir, i * ds, 45, pr);
+      route.project(cx[i] + nx[i] * mid * dir, cz[i] + nz[i] * mid * dir, rs[i], 45, pr);
       if (pr.dist <= lim) lo = mid;
       else hi = mid;
     }
     return lo;
   };
-  for (let i = 0; i < n; i++) {
-    oMax[i] = reach(i, 1);
-    oMin[i] = -reach(i, -1);
-  }
-  // --- 3. minimum bending-energy line (projected Gauss-Seidel, 3 levels)
+  const computeLimits = () => {
+    for (let i = 0; i < n; i++) {
+      route.project(cx[i], cz[i], rs[i], 45, pr);
+      rs[i] = pr.s;
+      if (pr.dist > lim) {
+        // (rare) reference outside the corridor: only allow coming back
+        oMax[i] = 0;
+        oMin[i] = 0;
+        const back = pr.dist - lim * 0.95;
+        const toward = ((pr.x - cx[i]) * nx[i] + (pr.z - cz[i]) * nz[i]) / pr.dist;
+        if (toward > 0) oMax[i] = back / Math.max(0.3, toward);
+        else oMin[i] = -back / Math.max(0.3, -toward);
+      } else {
+        oMax[i] = reach(i, 1);
+        oMin[i] = -reach(i, -1);
+      }
+    }
+  };
+  // minimum bending-energy offsets (projected Gauss-Seidel)
   const relax = (h: number, iterations: number) => {
     const first = closed ? 0 : h;
     const last = closed ? n - 1 : n - 1 - h;
@@ -219,8 +242,9 @@ function buildRaceLine(route: PolylinePath, halfWidth: number): RaceLine {
       }
     }
   };
-  if (lim > 0.4) {
-    relax(4, 240);
+  const solve = (coarse: number, mid: number, fine: number) => {
+    off.fill(0);
+    relax(4, coarse);
     for (let j = 0; j < n; j++) {
       const r = j % 4;
       if (r === 0) continue;
@@ -228,13 +252,65 @@ function buildRaceLine(route: PolylinePath, halfWidth: number): RaceLine {
       const b = wrapIndex(a + 4, n, closed);
       off[j] = off[a] + ((off[b] - off[a]) * r) / 4;
     }
-    relax(2, 60);
+    relax(2, mid);
     for (let j = 1; j < n; j += 2) {
       const b = wrapIndex(j + 1, n, closed);
       off[j] = (off[j - 1] + off[b]) * 0.5;
     }
-    relax(1, 60);
+    relax(1, fine);
+    for (let i = 0; i < n; i++) {
+      const o = off[i] > oMax[i] ? oMax[i] : off[i] < oMin[i] ? oMin[i] : off[i];
+      off[i] = o;
+      cx[i] += nx[i] * o;
+      cz[i] += nz[i] * o;
+    }
+  };
+  // uniform arc-length re-sampling of the current line (keeps n, endpoints of open lines)
+  const resample = () => {
+    const segs = closed ? n : n - 1;
+    cum[0] = 0;
+    for (let i = 0; i < segs; i++) {
+      const b = (i + 1) % n;
+      cum[i + 1] = cum[i] + Math.hypot(cx[b] - cx[i], cz[b] - cz[i]);
+    }
+    const total = cum[segs];
+    const stepLen = total / segs;
+    let k = 0;
+    for (let j = 0; j < n; j++) {
+      const target = j * stepLen;
+      while (k < segs - 1 && cum[k + 1] < target) k++;
+      const b = (k + 1) % n;
+      const l = cum[k + 1] - cum[k];
+      const t = l > 1e-9 ? (target - cum[k]) / l : 0;
+      tx[j] = cx[k] + (cx[b] - cx[k]) * (t > 1 ? 1 : t);
+      tz[j] = cz[k] + (cz[b] - cz[k]) * (t > 1 ? 1 : t);
+      // hint for the route projection of the new sample
+      const sa = rs[k];
+      let sb = rs[b];
+      if (closed && sb < sa - length * 0.5) sb += length;
+      nx[j] = sa + (sb - sa) * (t > 1 ? 1 : t); // (temporarily stored in nx)
+    }
+    for (let j = 0; j < n; j++) {
+      cx[j] = tx[j];
+      cz[j] = tz[j];
+      rs[j] = route.norm(nx[j]);
+    }
+  };
+
+  if (lim > 0.4) {
+    const ROUNDS = 4;
+    for (let round = 0; round < ROUNDS; round++) {
+      if (round > 0) resample();
+      computeNormals();
+      computeLimits();
+      if (round === 0) solve(240, 50, 40);
+      else solve(90, 30, 30);
+    }
+    resample();
   }
+  computeNormals();
+  computeLimits();
+
   // --- final line
   const x = new Float64Array(n);
   const z = new Float64Array(n);
@@ -245,27 +321,17 @@ function buildRaceLine(route: PolylinePath, halfWidth: number): RaceLine {
   const kappa = new Float32Array(n);
   const w = new Float32Array(n);
   for (let i = 0; i < n; i++) {
-    const o = off[i] > oMax[i] ? oMax[i] : off[i] < oMin[i] ? oMin[i] : off[i];
-    x[i] = cx[i] + nx[i] * o;
-    z[i] = cz[i] + nz[i] * o;
-    roomR[i] = Math.max(0, oMax[i] - o);
-    roomL[i] = Math.max(0, o - oMin[i]);
-    route.project(x[i], z[i], i * ds, 45, pr);
+    x[i] = cx[i];
+    z[i] = cz[i];
+    roomR[i] = Math.max(0, oMax[i]);
+    roomL[i] = Math.max(0, -oMin[i]);
+    route.project(x[i], z[i], rs[i], 45, pr);
     side[i] = pr.side >= 0 ? pr.dist : -pr.dist;
   }
   for (let i = 0; i < n; i++) {
     const b = wrapIndex(i + 1, n, closed);
     seg[i] = Math.hypot(x[b] - x[i], z[b] - z[i]);
     if (seg[i] < 0.05) seg[i] = 0.05;
-    // normals of the final line
-    const a2 = wrapIndex(i - 1, n, closed);
-    let dx = x[b] - x[a2];
-    let dz = z[b] - z[a2];
-    const l = Math.hypot(dx, dz) || 1;
-    dx /= l;
-    dz /= l;
-    nx[i] = -dz;
-    nz[i] = dx;
   }
   // curvature (Menger curvature over ±2 samples), lightly smoothed
   const raw = new Float32Array(n);
@@ -311,7 +377,41 @@ function buildRaceLine(route: PolylinePath, halfWidth: number): RaceLine {
     for (let k = -box; k <= box; k++) sum += mark[wrapIndex(i + k, n, closed)];
     w[i] = sum / (2 * box + 1);
   }
-  return { n, ds, closed, length, x, z, nx, nz, seg, side, roomL, roomR, kappa, w };
+  return { n, ds: seg.length ? meanSeg(seg, closed) : ds, closed, length, x, z, nx, nz, rs, seg, side, roomL, roomR, kappa, w };
+}
+
+function meanSeg(seg: Float32Array, closed: boolean): number {
+  const m = closed ? seg.length : seg.length - 1;
+  let sum = 0;
+  for (let i = 0; i < m; i++) sum += seg[i];
+  return m > 0 ? sum / m : 1;
+}
+
+/** Fractional line index of the sample whose route arc-length is closest to s (binary search on rs). */
+function lineIndexAt(line: RaceLine, s: number): number {
+  const n = line.n;
+  const rs = line.rs;
+  // rs is increasing except for one wrap on closed lines: find the rotation start
+  let lo = 0;
+  let hi = n - 1;
+  let startAt = 0;
+  if (line.closed && rs[0] > rs[n - 1]) {
+    // wrapped somewhere: locate the minimum
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (rs[mid] > rs[hi]) lo = mid + 1;
+      else hi = mid;
+    }
+    startAt = lo;
+  }
+  lo = 0;
+  hi = n - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (rs[(startAt + mid) % n] <= s) lo = mid;
+    else hi = mid - 1;
+  }
+  return (startAt + lo) % n;
 }
 
 // -----------------------------------------------------------------------------
@@ -437,7 +537,7 @@ class RaceAI implements IRaceAI {
         s: pr.s,
         lat: pr.side,
         offDist: pr.dist,
-        li: this.line ? pr.s / this.line.ds : 0,
+        li: this.line ? lineIndexAt(this.line, pr.s) : 0,
         lineDist: 0,
         vmax: this.line ? this.buildSpeedProfile(this.line, su.config, skill) : new Float32Array(0),
         steerMemo: createSteerMemo(su.config),
@@ -656,7 +756,7 @@ class RaceAI implements IRaceAI {
         return;
       }
       // lost (teleport / long excursion): re-synchronise with the route position
-      r.li = r.s / line.ds;
+      r.li = lineIndexAt(line, r.s);
     }
   }
 
@@ -1157,7 +1257,7 @@ class RaceAI implements IRaceAI {
   private resetOnRoute(r: Rival): void {
     const line = this.line!;
     const h = r.handle;
-    let i = Math.round(r.s / line.ds);
+    let i = lineIndexAt(line, r.s);
     let x = 0;
     let z = 0;
     for (let attempt = 0; attempt < 6; attempt++) {

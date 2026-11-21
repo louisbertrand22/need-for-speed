@@ -3,6 +3,7 @@
  * damage. Everything is driven imperatively from the shared frame loop.
  * ===========================================================================*/
 import { useRef } from 'react';
+import type { CSSProperties } from 'react';
 import { CarFront, Fan, Flame, Thermometer } from 'lucide-react';
 import type { ShiftLight } from '../core/types';
 import { KMH_TO_MPH, fitCanvas, retrigger, setClass, setP, setText, useApi, useFrame, useResize, useUI } from './hooks';
@@ -297,21 +298,21 @@ export function GaugeCluster({ dragMode }: { dragMode: boolean }) {
         <div className="ax-wing-row">
           <Fan className="ax-wing-ico text-neon-orange" strokeWidth={2.2} />
           <span className="ax-wing-lbl">Turbo</span>
-          <div ref={turboRef} className="ax-seg ax-tone-orange flex-1" style={{ '--n': 10, height: '0.5rem' } as React.CSSProperties}>
+          <div ref={turboRef} className="ax-seg ax-tone-orange flex-1" style={{ '--n': 10, height: '0.5rem' } as CSSProperties}>
             <i />
           </div>
         </div>
         <div ref={tempRowRef} className="ax-wing-row ax-temp-row">
           <Thermometer className="ax-wing-ico" strokeWidth={2.2} />
           <span className="ax-wing-lbl">Temp</span>
-          <div ref={tempRef} className="ax-seg flex-1" style={{ '--n': 10, height: '0.5rem' } as React.CSSProperties}>
+          <div ref={tempRef} className="ax-seg flex-1" style={{ '--n': 10, height: '0.5rem' } as CSSProperties}>
             <i />
           </div>
         </div>
         <div ref={dmgRowRef} className="ax-wing-row ax-dmg-row">
           <CarFront className="ax-wing-ico" strokeWidth={2.2} />
           <span className="ax-wing-lbl">État</span>
-          <div ref={dmgRef} className="ax-seg flex-1" style={{ '--n': 10, height: '0.5rem' } as React.CSSProperties}>
+          <div ref={dmgRef} className="ax-seg flex-1" style={{ '--n': 10, height: '0.5rem' } as CSSProperties}>
             <i />
           </div>
           <span className="ax-num w-[2.1rem] text-right text-[0.72rem]">
@@ -331,7 +332,7 @@ export function GaugeCluster({ dragMode }: { dragMode: boolean }) {
             </span>
           </div>
           <div className="relative mt-[0.3rem]">
-            <div ref={nosRef} className="ax-seg ax-nos-bar" style={{ '--n': 14, height: '1.05rem' } as React.CSSProperties}>
+            <div ref={nosRef} className="ax-seg ax-nos-bar" style={{ '--n': 14, height: '1.05rem' } as CSSProperties}>
               <i />
             </div>
             <div className="ax-nos-jets" aria-hidden>

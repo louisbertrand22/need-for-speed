@@ -66,7 +66,6 @@ function Slider({ value, onChange, testId }: { value: number; onChange: (v: numb
         className="ax-range"
         style={{ '--v': `${pct}%` } as CSSProperties}
         onChange={(e) => onChange(Number(e.currentTarget.value) / 100)}
-        onKeyDown={(e) => e.stopPropagation()}
         onPointerUp={(e) => e.currentTarget.blur()}
       />
       <span className="ax-num w-[2.8rem] text-right text-[0.9rem] text-white">{pct}%</span>
