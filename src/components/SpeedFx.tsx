@@ -38,7 +38,8 @@ export function SpeedFx({ lines }: { lines: boolean }) {
 
   useGameEvent((e) => {
     if (e.type === 'impact') {
-      const k = Math.min(1, Math.max(0.18, e.intensity / 16));
+      // the engine sends 0..1; tolerate raw m/s too
+      const k = Math.min(1, Math.max(0.18, e.intensity > 1.5 ? e.intensity / 20 : e.intensity));
       if (k > local.current.impact) local.current.impact = k;
     }
   });

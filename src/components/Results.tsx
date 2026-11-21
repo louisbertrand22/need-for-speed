@@ -271,7 +271,7 @@ export function BustedScreen({ busted }: { busted: BustedInfo }) {
             ))}
           </div>
           <div className="mt-[0.9rem] text-[0.88rem] font-semibold text-steel">
-            L’amende de {fmtMoney(busted.fine)} est prélevée sur ton compte. Ton niveau de recherche est remis à zéro.
+            L’amende de {fmtMoney(busted.fine)} est prélevée sur ton compte et la prime de la poursuite est perdue.
           </div>
         </div>
 

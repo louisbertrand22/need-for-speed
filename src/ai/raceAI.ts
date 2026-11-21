@@ -58,6 +58,8 @@ export const RACE_TUNING = {
   rbBoost: 0.22,
   rbSlow: 0.16,
   rbGrip: 0.05,
+  /** extra: target-speed easing when far ahead of the player (fraction × rubberBand) */
+  rbPace: 0.05,
   /** base power scale from skill: powerMin + powerSkill × skill */
   powerMin: 0.92,
   powerSkill: 0.11,
@@ -444,6 +446,7 @@ interface Rival extends RivalDriver {
   basePower: number;
   power: number;
   grip: number;
+  pace: number;
   /** recovery */
   slowT: number;
   episodeT: number;
@@ -462,6 +465,11 @@ interface Rival extends RivalDriver {
   blip: number;
   frame: number;
   feelerLimit: number;
+  /** distance to the static obstacle straight ahead (999 = clear), time spent nose against it */
+  wallDist: number;
+  wallT: number;
+  reverseElapsed: number;
+  parkT: number;
   /** public extras (debugging / telemetry): planned target speed (m/s), number of route resets */
   targetSpeed: number;
   resets: number;
@@ -489,6 +497,7 @@ class RaceAI implements IRaceAI {
   private obsSide = new Float32Array(MAX_OBS);
   private obsV = new Float32Array(MAX_OBS);
   private obsPlayer = new Uint8Array(MAX_OBS);
+  private obsFollow = new Uint8Array(MAX_OBS);
   private tgtX = 0;
   private tgtZ = 0;
 
@@ -551,6 +560,7 @@ class RaceAI implements IRaceAI {
         basePower,
         power: basePower,
         grip: 1,
+        pace: 1,
         slowT: 0,
         episodeT: 0,
         episodeProgress: progress,
@@ -567,6 +577,10 @@ class RaceAI implements IRaceAI {
         blip: rng() * 6.28,
         frame: i,
         feelerLimit: 999,
+        wallDist: 999,
+        wallT: 0,
+        reverseElapsed: 0,
+        parkT: 0,
         targetSpeed: 0,
         resets: 0,
       };
@@ -784,7 +798,8 @@ class RaceAI implements IRaceAI {
     r.progress += d;
     r.s = pr.s;
     r.lat = pr.side;
-    r.offDist = pr.dist;
+    // before the start / past the end of an open route only the lateral distance matters
+    r.offDist = !route.closed && (pr.s <= 0.01 || pr.s >= route.length - 0.01) ? Math.abs(pr.side) : pr.dist;
 
     input.shiftUp = false;
     input.shiftDown = false;
@@ -862,9 +877,12 @@ class RaceAI implements IRaceAI {
 
     // --- dynamic obstacles: lateral goal (route-lateral coordinates) + speed cap
     const iHere = wrapIndex(Math.round(r.li + (2 + v * 0.15) / line.ds), line.n, line.closed);
-    const desired = line.side[iHere] + this.baseOffset(r, line, iHere);
+    const baseHere = this.baseOffset(r, line, iHere);
+    const desired = line.side[iHere] + baseHere;
     const limR = line.side[iHere] + line.roomR[iHere];
     const limL = line.side[iHere] - line.roomL[iHere];
+    // corner zone: the line matters and the speed profile is about to bite => no overtaking of racers there
+    const cornerZone = line.w[iHere] > 0.7 && this.sampleProfile(r, line, r.li + (v * 1.8 + 10) / line.ds) < v + 4;
     let vCap = 999;
     let goal = desired;
     let urgent = false;
@@ -874,6 +892,7 @@ class RaceAI implements IRaceAI {
     const radius = Math.min(110, 20 + v * 1.8);
     const nb = this.host.queryBodies(st.x, st.z, radius, this.bodies);
     let nObs = 0;
+    let nPass = 0;
     let chaserSide = 0;
     let chased = false;
     for (let k = 0; k < nb && nObs < MAX_OBS; k++) {
@@ -902,9 +921,10 @@ class RaceAI implements IRaceAI {
       const extLong = b.halfLength * c + b.halfWidth * sn;
       const gap = gapC - extLong - halfL;
       const isPlayer = b.type === 'player';
+      const isRacer = isPlayer || b.type === 'rival';
       if (gapC < -(extLong + halfL + 1.2)) {
         // somebody behind: remember a faster racer on our tail (defending)
-        if ((isPlayer || b.type === 'rival') && gapC > -20 && vb > v + 0.5) {
+        if (isRacer && gapC > -20 && vb > v + 0.5) {
           chased = true;
           chaserSide = pb.side;
         }
@@ -921,67 +941,92 @@ class RaceAI implements IRaceAI {
       this.obsHi[nObs] = pb.side + extLat + halfW + margin;
       this.obsV[nObs] = vb;
       this.obsPlayer[nObs] = isPlayer ? 1 : 0;
+      // racers of similar pace are followed (not passed) through corner zones unless already alongside
+      // (also on straights while there is no real speed advantage: slipstream instead of pulling out)
+      const follow =
+        isRacer &&
+        gap > 0.8 &&
+        vb > 4 &&
+        (cornerZone ? closing < 9 + 5 * r.aggression : r.passSide === 0 && closing < 1.6 - r.aggression);
+      this.obsFollow[nObs] = follow ? 1 : 0;
+      if (!follow) nPass++;
       nObs++;
     }
 
     if (nObs > 0) {
-      // candidates: the desired offset and both edges of every blocked interval
-      let best = NaN;
-      let bestCost = Infinity;
-      let nearest = 0;
-      for (let k = 1; k < nObs; k++) if (this.obsGap[k] < this.obsGap[nearest]) nearest = k;
-      const nearSide = this.obsSide[nearest];
-      for (let ci = 0; ci <= nObs * 2; ci++) {
-        let cand: number;
-        if (ci === 0) cand = desired;
-        else {
-          const k = (ci - 1) >> 1;
-          cand = (ci - 1) & 1 ? this.obsHi[k] + 0.05 : this.obsLo[k] - 0.05;
-        }
-        if (cand > limR || cand < limL) continue;
-        let free = true;
+      let boxed = false;
+      if (nPass > 0) {
+        // candidates: the desired offset and both edges of every blocked interval
+        let best = NaN;
+        let bestCost = Infinity;
+        let nearest = -1;
         for (let k = 0; k < nObs; k++) {
-          if (cand > this.obsLo[k] && cand < this.obsHi[k]) {
-            free = false;
-            break;
+          if (this.obsFollow[k]) continue;
+          if (nearest < 0 || this.obsGap[k] < this.obsGap[nearest]) nearest = k;
+        }
+        const nearSide = this.obsSide[nearest];
+        for (let ci = 0; ci <= nObs * 2; ci++) {
+          let cand: number;
+          if (ci === 0) cand = desired;
+          else {
+            const k = (ci - 1) >> 1;
+            if (this.obsFollow[k]) continue;
+            cand = (ci - 1) & 1 ? this.obsHi[k] + 0.05 : this.obsLo[k] - 0.05;
+          }
+          if (cand > limR || cand < limL) continue;
+          let free = true;
+          for (let k = 0; k < nObs; k++) {
+            if (this.obsFollow[k]) continue;
+            if (cand > this.obsLo[k] && cand < this.obsHi[k]) {
+              free = false;
+              break;
+            }
+          }
+          if (!free) continue;
+          let cost = Math.abs(cand - r.lat) + 0.4 * Math.abs(cand - desired);
+          if (r.passSide !== 0 && (cand > nearSide ? 1 : -1) !== r.passSide) cost += 2.5;
+          if (cost < bestCost) {
+            bestCost = cost;
+            best = cand;
           }
         }
-        if (!free) continue;
-        let cost = Math.abs(cand - r.lat) + 0.4 * Math.abs(cand - desired);
-        if (r.passSide !== 0 && (cand > nearSide ? 1 : -1) !== r.passSide) cost += 2.5;
-        if (cost < bestCost) {
-          bestCost = cost;
-          best = cand;
+        boxed = best !== best; // NaN: no free slot
+        if (!boxed) {
+          goal = best;
+          if (Math.abs(best - desired) > 0.3) {
+            r.passSide = best > nearSide ? 1 : -1;
+            r.passHold = 1.2;
+          }
+        } else {
+          goal = r.lat;
         }
       }
-      const boxed = best !== best; // NaN: no free slot
-      if (!boxed) {
-        goal = best;
-        if (Math.abs(best - desired) > 0.3) {
-          r.passSide = best > nearSide ? 1 : -1;
-          r.passHold = 1.2;
-        }
-      } else {
-        goal = r.lat;
-      }
-      // speed cap from every obstacle we still overlap laterally
+      // speed cap from every obstacle in our way
       for (let k = 0; k < nObs; k++) {
-        const overlapNow = r.lat > this.obsLo[k] + 0.25 && r.lat < this.obsHi[k] - 0.25;
-        if (!overlapNow) continue;
         if (this.obsGapC[k] <= 0) continue; // alongside / behind our nose
         const gap = this.obsGap[k];
         const vb = this.obsV[k];
-        // time needed to move out of the way
-        let tLat = 1.6;
-        if (!boxed) {
-          const need = goal > this.obsSide[k] ? this.obsHi[k] - r.lat : r.lat - this.obsLo[k];
-          tLat = 0.3 + need / (2.6 + 1.6 * r.skill);
+        let tLat: number;
+        if (this.obsFollow[k]) {
+          // tuck in behind: relevant when it sits on (or near) the path we are about to drive
+          const lo = this.obsLo[k] - 1.2;
+          const hi = this.obsHi[k] + 1.2;
+          if (!((r.lat > lo && r.lat < hi) || (desired > lo && desired < hi))) continue;
+          tLat = 0.9;
+        } else {
+          if (!(r.lat > this.obsLo[k] + 0.25 && r.lat < this.obsHi[k] - 0.25)) continue;
+          // time needed to move out of the way
+          tLat = 1.6;
+          if (!boxed) {
+            const need = goal > this.obsSide[k] ? this.obsHi[k] - r.lat : r.lat - this.obsLo[k];
+            tLat = 0.3 + need / (2.6 + 1.6 * r.skill);
+          }
         }
-        const keep = this.obsPlayer[k] ? 3.5 : 2;
+        const keep = this.obsFollow[k] ? 2 + vb * 0.06 + (this.obsPlayer[k] ? 1 : 0) : this.obsPlayer[k] ? 3.5 : 2;
         const room = gap - keep;
-        const lim = (vb > 0 ? vb : 0) + (room > 0 ? room / tLat : room * 2);
+        const lim = (vb > 0 ? vb : 0) + (room > 0 ? room / tLat : room * (this.obsFollow[k] ? 1.2 : 2));
         if (lim < vCap) vCap = lim;
-        if (gap < 12 + v * 0.3) urgent = true;
+        if (!this.obsFollow[k] && gap < 12 + v * 0.3) urgent = true;
       }
     } else if (r.passHold > 0) {
       r.passHold -= dt;
@@ -1018,6 +1063,11 @@ class RaceAI implements IRaceAI {
     if (wantShift > r.shift + maxStep) r.shift += maxStep;
     else if (wantShift < r.shift - maxStep) r.shift -= maxStep;
     else r.shift = wantShift;
+    // never wind the shift up beyond the room available around the line
+    const shiftMax = line.roomR[iHere] - baseHere;
+    const shiftMin = -line.roomL[iHere] - baseHere;
+    if (r.shift > shiftMax + 0.5) r.shift = shiftMax + 0.5;
+    else if (r.shift < shiftMin - 0.5) r.shift = shiftMin - 0.5;
 
     // --- static obstacles: feeler when off the ideal line / off the track
     const offTrack = r.offDist > ctx.halfWidth + 0.5;
@@ -1028,6 +1078,7 @@ class RaceAI implements IRaceAI {
         const dirZ = sp > 3 ? st.vz / sp : fz;
         const len = Math.min(45, 7 + v * 0.75);
         const hit = castFeeler(this.host.world, st.x, st.z, dirX, dirZ, len, halfW + 0.25, st.y);
+        r.wallDist = hit < len ? hit : 999;
         if (hit < len) {
           r.feelerLimit = Math.sqrt(2 * this.brakeAccel(r.config, r.skill) * Math.max(0, hit - halfL - 2)) + 2.5;
           // come back toward the middle of the road
@@ -1039,18 +1090,24 @@ class RaceAI implements IRaceAI {
       if (r.feelerLimit < vCap) vCap = r.feelerLimit;
     } else {
       r.feelerLimit = 999;
+      r.wallDist = 999;
     }
 
     // --- steering: pure pursuit on the (shifted) line
     const look = RACE_TUNING.lookBase + RACE_TUNING.lookGain * v;
     this.lineTarget(r, line, r.li + look / line.ds, r.shift);
     const slideGain = 0.75 + 0.35 * r.skill;
-    input.steer = steerToward(st, r.config, r.steerMemo, this.tgtX, this.tgtZ, slideGain, dt);
+    const latLimit = cornerGrip(r) * GRAVITY * 0.97;
+    input.steer = steerToward(st, r.config, r.steerMemo, this.tgtX, this.tgtZ, slideGain, latLimit, dt);
 
     // --- target speed
     const iNow = wrapIndex(Math.round(r.li), line.n, line.closed);
-    let target = this.sampleProfile(r, line, r.li + (v * 0.1) / line.ds) * Math.sqrt(r.grip) * speedFactor;
-    // off the ideal line in a bend: the inside is tighter
+    let target = this.sampleProfile(r, line, r.li + (v * 0.1) / line.ds) * Math.sqrt(r.grip) * speedFactor * r.pace;
+    // off the ideal line around a bend: the profile assumed the ideal radius
+    if (cornerZone) {
+      const offLine = Math.abs(r.shift) - 1;
+      if (offLine > 0) target *= 1 - 0.22 * (offLine > 3.5 ? 1 : offLine / 3.5);
+    }
     const kq = line.kappa[iNow] * r.lineDist;
     if (kq > 0.02) target *= Math.sqrt(kq > 0.5 ? 0.5 : 1 - kq);
     if (offTrack) {
@@ -1058,11 +1115,28 @@ class RaceAI implements IRaceAI {
       const rejoin = 15 + 8 * r.skill;
       if (target > rejoin) target = rejoin;
     }
+    // arc check: can the car actually make the arc toward its look-ahead points at this speed?
+    {
+      let dx = this.tgtX - st.x;
+      let dz = this.tgtZ - st.z;
+      let k1 = (2 * (-dx * fz + dz * fx)) / (dx * dx + dz * dz + 1e-6);
+      if (k1 < 0) k1 = -k1;
+      this.lineTarget(r, line, r.li + (look * 1.8 + 6) / line.ds, r.shift);
+      dx = this.tgtX - st.x;
+      dz = this.tgtZ - st.z;
+      let k2 = (2 * (-dx * fz + dz * fx)) / (dx * dx + dz * dz + 1e-6);
+      if (k2 < 0) k2 = -k2;
+      const need = k1 * 0.85 > k2 ? k1 * 0.85 : k2;
+      const coef = RACE_TUNING.latBase + RACE_TUNING.latSkill * r.skill + 0.05;
+      let vArc = cornerSpeed(r.config, coef, r.grip, need);
+      if (vArc < 7) vArc = 7;
+      if (vArc < target) target = vArc;
+    }
     if (vCap < target) target = vCap;
     if (target < 0) target = 0;
     r.targetSpeed = target;
 
-    const latUse = Math.abs(st.speed * st.yawRate) / (cornerGrip(r) * GRAVITY);
+    const latUse = Math.abs(st.speed * st.yawRate) / (latLimit / 0.97);
     updatePedals(r.pedal, st.speed, target, latUse, dt);
     let throttle = r.pedal.throttle;
     let brake = r.pedal.brake;
@@ -1114,6 +1188,7 @@ class RaceAI implements IRaceAI {
     const gap = r.progress - playerProgress;
     let power = r.basePower;
     let grip = 1;
+    let pace = 1;
     if (gap < -T.rbBehindStart) {
       let k = (-gap - T.rbBehindStart) / T.rbRange;
       if (k > 1) k = 1;
@@ -1126,11 +1201,14 @@ class RaceAI implements IRaceAI {
       k = k * k * (3 - 2 * k);
       power = r.basePower + (1 - T.rbSlow * rb - r.basePower) * k;
       if (leadsAheadPack) power -= 0.04 * rb * (0.4 + 0.6 * k);
+      // far ahead: also drive a little below the limit (earlier lifts, calmer corners)
+      pace = 1 - T.rbPace * rb * k;
     }
     // ease over seconds
     const a = 1 - Math.exp(-dt * 0.45);
     r.power += (power - r.power) * a;
     r.grip += (grip - r.grip) * a;
+    r.pace += (pace - r.pace) * a;
     if (r.power < 0.75) r.power = 0.75;
     else if (r.power > 1.3) r.power = 1.3;
   }
@@ -1221,14 +1299,39 @@ class RaceAI implements IRaceAI {
     }
 
     if (r.reverseCooldown > 0) r.reverseCooldown -= dt;
-    if (r.reverseT <= 0 && r.episodeT > 0 && slow && r.slowT > T.stuckDelay && r.reverseCooldown <= 0) {
-      r.reverseT = T.reverseTime;
+    // nose against a wall: no need to wait, back up right away
+    const halfL = r.config.length * 0.5;
+    if (r.wallDist < halfL + 2.2 && Math.abs(st.speed) < 4.5 && r.raceTime > 1) r.wallT += dt;
+    else r.wallT = 0;
+    if (r.reverseT <= 0 && r.reverseCooldown <= 0) {
+      if (r.episodeT > 0 && slow && r.slowT > T.stuckDelay) {
+        r.reverseT = T.reverseTime;
+        r.reverseElapsed = 0;
+      } else if (r.wallT > 0.4) {
+        r.reverseT = T.reverseTime;
+        r.reverseElapsed = 0;
+        if (r.episodeT <= 0) {
+          r.episodeT = 0.01;
+          r.episodeProgress = r.progress;
+        }
+      }
     }
     if (r.reverseT > 0) {
       r.reverseT -= dt;
+      r.reverseElapsed += dt;
+      if (r.reverseT <= 0 && r.reverseElapsed < 2.8) {
+        // keep backing up while the nose is still boxed in
+        const hit = castFeeler(this.host.world, st.x, st.z, Math.sin(st.heading), Math.cos(st.heading), 10, r.config.width * 0.5 + 0.3, st.y);
+        if (hit < 7.5) r.reverseT = 0.3;
+      }
+      // blocked behind as well: stop insisting
+      if (r.reverseElapsed > 1 && Math.abs(st.speed) < 0.25) r.reverseT = 0;
       if (r.reverseT <= 0) {
         r.reverseCooldown = 2.2;
         r.slowT = 0;
+        r.wallT = 0;
+        r.wallDist = 999;
+        r.feelerLimit = 999;
         r.pedal.phase = 0;
       }
       // back up, swinging the nose toward the route a little further on
@@ -1285,6 +1388,8 @@ class RaceAI implements IRaceAI {
     r.shift = 0;
     r.passSide = 0;
     r.feelerLimit = 999;
+    r.wallDist = 999;
+    r.wallT = 0;
     r.pedal.phase = 0;
     r.pedal.throttle = 0.5;
     r.pedal.brake = 0;
@@ -1321,10 +1426,11 @@ class RaceAI implements IRaceAI {
     else if (wantShift < r.shift - step) r.shift -= step;
     else r.shift = wantShift;
     this.lineTarget(r, line, r.li + (8 + v * 0.5) / line.ds, r.shift);
-    input.steer = steerToward(st, r.config, r.steerMemo, this.tgtX, this.tgtZ, 1, dt);
+    input.steer = steerToward(st, r.config, r.steerMemo, this.tgtX, this.tgtZ, 1, cornerGrip(r) * GRAVITY * 0.8, dt);
+    r.parkT += dt;
     if (v > 2.5) {
-      // slow down gently, harder when something is right ahead
-      let brake = v > 30 ? 0.5 : 0.32;
+      // coast for a moment, then slow down gently — harder when something is right ahead
+      let brake = r.parkT < 1.2 ? 0 : v > 30 ? 0.4 : 0.26;
       const fx = Math.sin(st.heading);
       const fz = Math.cos(st.heading);
       const nb = this.host.queryBodies(st.x + fx * 10, st.z + fz * 10, 12, this.bodies);
@@ -1369,7 +1475,7 @@ class RaceAI implements IRaceAI {
     // right(h) = (-cos h, sin h)
     px += -Math.cos(hd) * r.laneOffset;
     pz += Math.sin(hd) * r.laneOffset;
-    const cmd = steerToward(st, r.config, r.steerMemo, px, pz, 1, dt);
+    const cmd = steerToward(st, r.config, r.steerMemo, px, pz, 1, 4, dt);
     r.handle.input.steer = clampAbs(cmd, 0.35);
   }
 

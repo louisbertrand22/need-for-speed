@@ -351,7 +351,18 @@ export function createGlassMaterial(opacity: number): GlassMaterial {
         }
         gl_FragColor = vec4(apexRgb, apexA);`,
       )
-      .replace('#include <premultiplied_alpha_fragment>', '');
+      .replace('#include <premultiplied_alpha_fragment>', '')
+      .replace(
+        '#include <fog_fragment>',
+        `#ifdef USE_FOG
+          #ifdef FOG_EXP2
+            float fogFactor = 1.0 - exp( - fogDensity * fogDensity * vFogDepth * vFogDepth );
+          #else
+            float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
+          #endif
+          gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor * gl_FragColor.a, fogFactor );
+        #endif`,
+      );
   };
   mat.customProgramCacheKey = () => 'apex-glass-v1';
   return mat;

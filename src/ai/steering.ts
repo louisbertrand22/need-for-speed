@@ -26,6 +26,11 @@ const STEER_BUCKET_SPEED = 7; // m/s per bucket
 export interface SteerMemo {
   /** learnt max wheel angle (rad) per speed bucket */
   maxAngle: Float32Array;
+  /**
+   * learnt understeer coefficient: the wheel angle needed for a curvature k at speed v is
+   * atan(wheelbase · k) · (1 + understeer · v²)
+   */
+  understeer: number;
   /** last command, for rate limiting */
   last: number;
 }
@@ -37,11 +42,26 @@ export function createSteerMemo(config: VehicleConfig): SteerMemo {
     // prior: speed-sensitive steering similar to most arcade physics
     maxAngle[i] = config.maxSteer / (1 + (v / 26) * (v / 26));
   }
-  return { maxAngle, last: 0 };
+  return { maxAngle, understeer: 0.00012, last: 0 };
 }
 
-function learnSteer(memo: SteerMemo, st: VehicleState): void {
+function learnSteer(memo: SteerMemo, st: VehicleState, config: VehicleConfig, latLimit: number): void {
   const a = Math.abs(st.steer);
+  const v = st.speed;
+  // understeer: compare the kinematic yaw rate of the current wheel angle with the real one
+  // (only in clean, moderate cornering: no slide, tyres far from saturation)
+  const yaw = Math.abs(st.yawRate);
+  if (v > 12 && yaw > 0.1 && st.grounded && Math.abs(st.steerAngle) > 0.004 && st.steerAngle * st.yawRate < 0) {
+    const latAcc = v * yaw;
+    if (latAcc < 0.7 * latLimit && Math.abs(st.lateralSpeed) < 0.06 * v) {
+      const kin = (v * Math.tan(Math.abs(st.steerAngle))) / config.wheelbase;
+      let ratio = kin / yaw;
+      if (ratio < 1) ratio = 1;
+      else if (ratio > 4) ratio = 4;
+      const c = (ratio - 1) / (v * v);
+      memo.understeer += (c - memo.understeer) * 0.02;
+    }
+  }
   if (a < 0.25) return;
   const ratio = Math.abs(st.steerAngle) / a;
   if (!(ratio > 0.005 && ratio < 1.2)) return;
@@ -66,6 +86,8 @@ export function maxWheelAngle(memo: SteerMemo, speed: number): number {
  * yaw-rate feedback and counter-steering when the car slides.
  *
  * @param slideGain  how strongly the driver catches slides (≈1 = expert)
+ * @param latLimit   lateral acceleration the tyres can give (m/s²): the requested curvature is
+ *                   clamped to latLimit / v² so the driver never asks for more than the grip
  */
 export function steerToward(
   st: VehicleState,
@@ -74,9 +96,10 @@ export function steerToward(
   tx: number,
   tz: number,
   slideGain: number,
+  latLimit: number,
   dt: number,
 ): number {
-  learnSteer(memo, st);
+  learnSteer(memo, st, config, latLimit);
   const fx = Math.sin(st.heading);
   const fz = Math.cos(st.heading);
   const dx = tx - st.x;
@@ -90,10 +113,13 @@ export function steerToward(
     // target beside / behind: full lock toward it
     cmd = lr >= 0 ? 1 : -1;
   } else {
-    const kappa = (2 * lr) / d2; // > 0 = right
+    let kappa = (2 * lr) / d2; // > 0 = right
+    const kMax = latLimit / (v * v > 30 ? v * v : 30);
+    if (kappa > kMax) kappa = kMax;
+    else if (kappa < -kMax) kappa = -kMax;
     const maxA = maxWheelAngle(memo, v);
-    // geometric wheel angle + mild understeer compensation at speed
-    const delta = Math.atan(config.wheelbase * kappa) * (1 + v * v * 0.00035);
+    // geometric wheel angle + learnt understeer compensation at speed
+    const delta = Math.atan(config.wheelbase * kappa) * (1 + v * v * memo.understeer);
     cmd = delta / (maxA > 0.02 ? maxA : 0.02);
     if (v > 4) {
       // yaw-rate feedback (turning right = negative yaw rate)

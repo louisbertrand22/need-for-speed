@@ -358,7 +358,7 @@ export function PauseMenu() {
                 />
               </>
             ) : null}
-            <NavItem icon={MapIcon} label="Carte" testId="pause-map" onClick={() => a.setMapOpen(true)} />
+            {screen === 'freeroam' ? <NavItem icon={MapIcon} label="Carte" testId="pause-map" onClick={() => a.setMapOpen(true)} /> : null}
             <div className="my-[0.5rem] h-px bg-white/10" />
             <NavItem icon={Settings} label="Options" active={page === 'options'} testId="pause-options" onClick={() => setPage('options')} />
             <NavItem icon={Keyboard} label="Commandes" active={page === 'controls'} testId="pause-controls" onClick={() => setPage('controls')} />

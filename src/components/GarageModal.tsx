@@ -435,7 +435,7 @@ function StatsPanel({ stats, next, mph }: { stats: PerfStats; next: PerfStats | 
         <NumStat label="Puissance" value={stats.powerHp} unit="ch" next={next ? next.powerHp : null} />
         <NumStat label="Couple" value={stats.torqueNm} unit="Nm" next={next ? next.torqueNm : null} />
         <NumStat label="Poids" value={stats.massKg} unit="kg" next={next ? next.massKg : null} lowerIsBetter />
-        <NumStat label={mph ? '0–60 mph*' : '0–100 km/h'} value={stats.zeroToHundred} unit="s" next={next ? next.zeroToHundred : null} lowerIsBetter digits={1} />
+        <NumStat label="0–100 km/h" value={stats.zeroToHundred} unit="s" next={next ? next.zeroToHundred : null} lowerIsBetter digits={1} />
         <NumStat label="V-max" value={stats.topSpeedKmh * k} unit={mph ? 'mph' : 'km/h'} next={next ? next.topSpeedKmh * k : null} />
         <div className="ax-stat-tile flex flex-col justify-center !py-[0.4rem]">
           <div className="ax-label !text-[0.62rem]">Classe</div>
@@ -471,7 +471,7 @@ export function GarageModal({ initialTab = 'cars' }: { initialTab?: GarageTab })
   const spec = getCarSpec(carId);
   const owned = profile.garage[carId] ?? null;
   const isCurrent = profile.currentCarId === carId;
-  const editable = owned !== null && isCurrent;
+  const editable = owned !== null;
   const tuning: TuningState = owned ? owned.tuning : STOCK_TUNING;
   const savedVisuals: CarVisuals = owned ? owned.visuals : spec.defaultVisuals;
   const preview: CarVisuals = editable && garagePreview ? garagePreview : savedVisuals;
@@ -546,17 +546,6 @@ export function GarageModal({ initialTab = 'cars' }: { initialTab?: GarageTab })
       <div>
         <div className="ax-display text-[1rem] text-white">Voiture non possédée</div>
         <div className="mt-[0.2rem] text-[0.92rem] font-semibold text-chrome">Achète la {spec.name} dans l’onglet Voitures pour la préparer et la personnaliser.</div>
-      </div>
-    </div>
-  ) : !isCurrent ? (
-    <div className="ax-notice">
-      <KeyRound className="h-[1.6rem] w-[1.6rem] shrink-0 text-neon-cyan" strokeWidth={2.2} />
-      <div className="min-w-0 flex-1">
-        <div className="ax-display text-[1rem] text-white">Prends le volant d’abord</div>
-        <div className="mt-[0.2rem] text-[0.92rem] font-semibold text-chrome">Les modifications s’appliquent à ta voiture active.</div>
-        <Btn size="sm" tone="cyan" sound="none" className="mt-[0.5rem]" testId="notice-drive" onClick={() => report(a.selectCar(carId), 'left')}>
-          Conduire la {spec.name}
-        </Btn>
       </div>
     </div>
   ) : null;
