@@ -57,6 +57,9 @@ export class Batch {
   cb = 1;
   fa = 0;
   fb = 0;
+  /** pen UV (defaults to the plain white texel of the atlas) */
+  pu = PLAIN_U;
+  pv = PLAIN_V;
   geometry: THREE.BufferGeometry | null = null;
 
   constructor(readonly layer: LayerName) {
@@ -101,7 +104,13 @@ export class Batch {
     return this;
   }
 
-  vert(x: number, y: number, z: number, u = PLAIN_U, v = PLAIN_V): number {
+  /** Following vertices use an emissive colour patch of the atlas (lamp heads...). */
+  patch(name: PatchName | null): this {
+    this.pu = name ? patchU(name) : PLAIN_U;
+    return this;
+  }
+
+  vert(x: number, y: number, z: number, u = this.pu, v = this.pv): number {
     if (this.nv * 3 >= this.pos.length) this.growV();
     const i = this.nv++;
     this.pos[i * 3] = x;

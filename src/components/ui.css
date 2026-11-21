@@ -516,7 +516,7 @@
 }
 @keyframes ax-blink {
   0% { opacity: 1; }
-  100% { opacity: 0.15; }
+  100% { opacity: 0.32; }
 }
 @keyframes ax-shake {
   0%, 100% { transform: translateX(0); }

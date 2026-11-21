@@ -41,8 +41,8 @@ function RewardRow({ label, money, rep, visible, strong }: { label: string; mone
     <div className={cx('ax-in-left flex h-[2.1rem] items-center justify-between gap-[0.8rem]', strong ? 'border-t-2 border-neon-amber/70 pt-[0.2rem]' : 'border-b border-white/10')}>
       <span className={cx('truncate', strong ? 'ax-display text-[1rem] text-white' : 'text-[1rem] font-bold text-chrome')}>{label}</span>
       <span className="flex shrink-0 items-baseline gap-[1rem]">
-        <TickNumber value={money} prefix="+" suffix={' $'} duration={strong ? 1100 : 600} className={cx('ax-num italic text-neon-green', strong ? 'text-[1.5rem]' : 'text-[1rem]')} />
-        <TickNumber value={rep} prefix="+" suffix=" REP" duration={strong ? 1100 : 600} className={cx('ax-num w-[6.2rem] text-right italic text-neon-cyan', strong ? 'text-[1.15rem]' : 'text-[0.9rem]')} />
+        <TickNumber value={money} prefix="+" suffix={' $'} duration={strong ? 1100 : 600} className={cx('ax-num whitespace-nowrap italic text-neon-green', strong ? 'text-[1.5rem]' : 'text-[1rem]')} />
+        <TickNumber value={rep} prefix="+" suffix=" REP" duration={strong ? 1100 : 600} className={cx('ax-num whitespace-nowrap text-right italic text-neon-cyan', strong ? 'w-[8.2rem] text-[1.1rem]' : 'w-[6.2rem] text-[0.9rem]')} />
       </span>
     </div>
   );

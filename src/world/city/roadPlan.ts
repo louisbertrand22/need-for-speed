@@ -283,7 +283,7 @@ export function gridLines(): GridLine[] {
   H(450, -450, 1100);
   H(600, 300, 900, 'industrial');
   H(750, -450, 600, 'industrial');
-  H(900, -450, 856, 'industrial'); // ends on the west pier
+  H(900, -450, 800, 'industrial'); // ends on the west pier
   return L;
 }
 

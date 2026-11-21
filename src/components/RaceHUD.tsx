@@ -167,7 +167,7 @@ export function RaceHUD() {
       </div>
 
       {/* centre column */}
-      <div className="absolute left-1/2 top-[8.3rem] flex -translate-x-1/2 flex-col items-center">
+      <div className="absolute left-1/2 top-[9.3rem] flex -translate-x-1/2 flex-col items-center">
         {drag ? <DragStrip /> : null}
         <BannerSlot banner={popups.state.banner} onDone={popups.clearBanner} />
         {drift ? <DriftCombo /> : null}

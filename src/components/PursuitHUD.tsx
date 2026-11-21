@@ -37,7 +37,7 @@ export function PursuitHUD() {
   return (
     <div className={cx('ax-pursuit ax-in-up', cooldown && 'is-cool')}>
       {/* top row: heat / units / bounty */}
-      <div className="flex items-end justify-between gap-[1.2rem] px-[0.4rem]">
+      <div className="flex items-end justify-between gap-[0.8rem] px-[0.4rem]">
         <div className="flex items-center gap-[0.5rem]">
           <span className="ax-label !text-white/80">Recherché</span>
           <div className="flex items-center gap-[0.12rem]">
@@ -59,24 +59,22 @@ export function PursuitHUD() {
           </div>
         </div>
 
-        <div className="flex items-center gap-[0.9rem] text-[0.85rem] font-bold">
+        <div className="flex shrink-0 items-center gap-[0.7rem] text-[0.85rem] font-bold">
           {heli ? (
-            <span className="ax-blink-slow flex items-center gap-[0.3rem] text-neon-amber">
-              <Helicopter className="h-[1.15rem] w-[1.15rem]" strokeWidth={2.3} />
-              HÉLICO
+            <span className="ax-blink-slow flex items-center text-neon-amber" title="Hélicoptère">
+              <Helicopter className="h-[1.25rem] w-[1.25rem]" strokeWidth={2.3} />
             </span>
           ) : null}
           <span className="flex items-center gap-[0.3rem] text-white">
             <Siren className={cx('h-[1.1rem] w-[1.1rem]', inSight ? 'text-neon-red' : 'text-neon-blue')} strokeWidth={2.3} />
             <span className="ax-num text-[0.95rem]">{units}</span>
-            <span className="ax-label !text-white/70">{units > 1 ? 'unités' : 'unité'}</span>
           </span>
           <span className="ax-num text-[0.8rem] text-steel">
             <span ref={timeRef}>0:00</span>
           </span>
         </div>
 
-        <div className="flex items-baseline gap-[0.45rem]">
+        <div className="flex shrink-0 items-baseline gap-[0.45rem] whitespace-nowrap">
           <span className="ax-label !text-white/80">Prime</span>
           <span className="ax-display ax-glow ax-tone-amber text-[1.5rem] text-neon-amber">
             <span ref={bountyRef}>0</span>

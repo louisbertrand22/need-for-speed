@@ -8,7 +8,7 @@ import { bridgeDeckHeight, bridgeU, ringLateral } from './roadPlan';
 
 /** Pier decks standing in the bay (y = 0). */
 export const PIERS: Rect[] = [
-  { minX: BAY.minX, maxX: 884, minZ: 872, maxZ: 928 }, // west pier, along the street z = 900
+  { minX: BAY.minX, maxX: 826, minZ: 872, maxZ: 928 }, // west pier, along the street z = 900
   { minX: 872, maxX: 928, minZ: BAY.minZ, maxZ: 864 }, // north pier, along the street x = 900
 ];
 

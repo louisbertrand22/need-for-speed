@@ -196,9 +196,8 @@ function PartRow({
               <span className="block truncate text-[0.84rem] font-bold text-white">
                 <span className="text-neon-green">▸ {TUNE_LEVEL_NAMES[next]}</span> · {info.levels[next]}
               </span>
-              <span className="block text-[0.72rem] font-bold uppercase tracking-[0.08em] text-steel">
-                {info.affects}
-                {repLocked ? <span className="ml-[0.6rem] text-neon-red">REP {repNeeded} requis</span> : null}
+              <span className="block truncate text-[0.72rem] font-bold uppercase tracking-[0.08em] text-steel">
+                {repLocked ? <span className="text-neon-red">Niveau REP {repNeeded} requis</span> : info.affects}
               </span>
             </span>
             <Btn
