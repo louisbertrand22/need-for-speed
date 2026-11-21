@@ -26,7 +26,7 @@ export interface CityCore {
   pads: Required<PadDef>[];
 }
 
-export function buildCore(seed: number, pads: PadDef[]): CityCore {
+export function buildCore(seed: number, makePads: (graph: CityRoadGraph) => PadDef[]): CityCore {
   const hf = new Heightfield(seed);
   const plan = buildRoadPlan(hf);
   const graph = new CityRoadGraph(plan.nodes, plan.edges);
@@ -55,7 +55,7 @@ export function buildCore(seed: number, pads: PadDef[]): CityCore {
   }
   // pads
   const resolved: Required<PadDef>[] = [];
-  for (const p of pads) {
+  for (const p of makePads(graph)) {
     let h = p.h;
     if (h === undefined) {
       const hit = graph.nearestRoad(p.x, p.z, 80);

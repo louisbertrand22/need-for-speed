@@ -343,7 +343,7 @@ export function createLook(rng: () => number, fogColor: number): CityLook {
     map: tAlbedo,
     emissiveMap: tEmissive,
     emissive: 0xffffff,
-    emissiveIntensity: 2.6,
+    emissiveIntensity: 1.55,
     roughness: 0.42,
     metalness: 0.35,
     vertexColors: true,
@@ -354,7 +354,7 @@ export function createLook(rng: () => number, fogColor: number): CityLook {
     roughness: 1,
     metalness: 0.0,
     vertexColors: true,
-    envMapIntensity: 1.6,
+    envMapIntensity: 1.15,
     polygonOffset: true,
     polygonOffsetFactor: -1,
     polygonOffsetUnits: -1,
@@ -435,15 +435,16 @@ export function createLook(rng: () => number, fogColor: number): CityLook {
         float h = max(d.y, 0.0);
         vec3 zenith = vec3(0.004, 0.006, 0.022);
         vec3 col = mix(uFog, zenith, pow(h, 0.42));
-        // city glow on the horizon (warm magenta towards the east where the city lies)
-        float glow = exp(-h * 7.0);
-        col += vec3(0.20, 0.07, 0.22) * glow * (0.55 + 0.45 * d.x);
-        col += vec3(0.16, 0.09, 0.03) * exp(-h * 16.0);
+        // city glow on the horizon, fading out below it so hidden far chunks melt into the haze
+        float above = smoothstep(-0.12, 0.02, d.y);
+        float glow = exp(-h * 7.0) * above;
+        col += vec3(0.085, 0.03, 0.10) * glow * (0.55 + 0.45 * d.x);
+        col += vec3(0.07, 0.04, 0.012) * exp(-h * 16.0) * above;
         // stars
-        vec3 cell = floor(d * 190.0);
+        vec3 cell = floor(d * 420.0);
         float s = hash(cell);
         float tw = 0.75 + 0.25 * sin(uTime * 2.0 + s * 90.0);
-        col += vec3(0.9, 0.95, 1.0) * step(0.9935, s) * smoothstep(0.08, 0.35, h) * tw * (0.5 + 1.2 * hash(cell + 3.0));
+        col += vec3(0.9, 0.95, 1.0) * step(0.9972, s) * smoothstep(0.08, 0.35, h) * tw * (0.5 + 1.2 * hash(cell + 3.0));
         // moon
         vec3 md = normalize(vec3(-0.45, 0.5, -0.74));
         float m = dot(d, md);

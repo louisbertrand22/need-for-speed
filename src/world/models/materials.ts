@@ -113,7 +113,8 @@ export function applyPaint(mat: PaintMaterial, color: THREE.ColorRepresentation,
     mat.normalScale.set(0.07, 0.07);
     mat.iridescence = 1;
     mat.iridescenceIOR = 1.75;
-    mat.iridescenceThicknessRange = [180, 520];
+    mat.iridescenceThicknessMinimum = 180;
+    mat.iridescenceThicknessMaximum = 520;
     mat.sheen = 0.85;
     mat.sheenRoughness = 0.35;
     // colour flip: hue-shifted, lighter sheen

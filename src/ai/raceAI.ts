@@ -47,8 +47,8 @@ export const RACE_TUNING = {
   lookBase: 6,
   lookGain: 0.45,
   /** lateral acceleration budget = (latBase + latSkill × skill) × grip × g */
-  latBase: 0.72,
-  latSkill: 0.22,
+  latBase: 0.66,
+  latSkill: 0.2,
   /** planned braking = brakeShare × config.brakeDecel (scaled down for low skill) */
   brakeShare: 0.8,
   /** rubber band: distance (m) of the dead zone and of the full effect */

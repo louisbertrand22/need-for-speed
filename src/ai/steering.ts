@@ -37,10 +37,13 @@ export interface SteerMemo {
 
 export function createSteerMemo(config: VehicleConfig): SteerMemo {
   const maxAngle = new Float32Array(STEER_BUCKETS);
+  // prior = the steering law of physics/vehiclePhysics.ts (the table keeps learning the real ratio at run time)
+  let k = (config.maxSteer - 0.5) / 0.16;
+  k = k < 0 ? 0 : k > 1 ? 1 : k;
+  const v0 = 9.5 + 2.5 * k;
   for (let i = 0; i < STEER_BUCKETS; i++) {
-    const v = i * STEER_BUCKET_SPEED;
-    // prior: speed-sensitive steering similar to most arcade physics
-    maxAngle[i] = config.maxSteer / (1 + (v / 26) * (v / 26));
+    const q = (i * STEER_BUCKET_SPEED) / v0;
+    maxAngle[i] = config.maxSteer * (0.14 + 0.86 / (1 + q * q));
   }
   return { maxAngle, understeer: 0.00012, last: 0 };
 }

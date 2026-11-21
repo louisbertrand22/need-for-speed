@@ -1300,7 +1300,7 @@ export class BodyBuilder {
     const s = this.s;
     const sec = newSection();
     const p = this.parts;
-    p.color(0xffffff).surface(0.4, 0).channel(CH.neon).setPart(PART.body);
+    p.color(0x0a0a0c).surface(0.4, 0).channel(CH.neon).setPart(PART.body);
     const z0 = s.axleZ[0] - s.archR - 0.08;
     const z1 = s.axleZ[1] + s.archR + 0.08;
     const c = s.section(0, sec);
@@ -1637,7 +1637,7 @@ export class BodyBuilder {
         ],
         x - 0.007,
         x + 0.007,
-        (a, b, dd) => [dd, b, a],
+        (a, b, dd) => [-dd, b, a],
       );
     }
     // struts
@@ -1655,7 +1655,7 @@ export class BodyBuilder {
         ],
         x - 0.008,
         x + 0.008,
-        (a, b, dd) => [dd, b, a],
+        (a, b, dd) => [-dd, b, a],
       );
     }
   }
