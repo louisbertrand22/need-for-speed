@@ -686,10 +686,12 @@ export class RaceSession {
   modifyInput(input: DriveInput): void {
     const def = this.def;
     if (this.phase === 'finishing' || this.phase === 'done') {
+      // coast to a stop; never hold the brake at standstill (the gearbox would select reverse)
+      const rolling = this.host.ai.player.vehicle.state.speed > 1.5;
       input.throttle = 0;
       input.nitro = false;
-      input.brake = Math.max(input.brake, 0.55);
-      input.handbrake = false;
+      input.brake = rolling ? 0.6 : 0;
+      input.handbrake = !rolling;
       if (def.mode === 'drag') input.steer = this.laneSteer();
       return;
     }

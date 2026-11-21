@@ -422,12 +422,18 @@ export function facadeBox(
   face(hx, -hz, -hx, -hz, 0, -1);
   face(hx, hz, hx, -hz, 1, 0);
   face(-hx, -hz, -hx, hz, -1, 0);
-  // roof
+  // roof (darker than the walls so it does not mirror the sky glow)
   b.normal(0, 1, 0);
+  b.cr *= 0.22;
+  b.cg *= 0.22;
+  b.cb *= 0.22;
   const y1 = y0 + h;
   const r0 = b.vert(wx(-hx, -hz), y1, wz(-hx, -hz));
   const r1 = b.vert(wx(hx, -hz), y1, wz(hx, -hz));
   const r2 = b.vert(wx(hx, hz), y1, wz(hx, hz));
   const r3 = b.vert(wx(-hx, hz), y1, wz(-hx, hz));
   b.quad(r0, r1, r2, r3);
+  b.cr /= 0.22;
+  b.cg /= 0.22;
+  b.cb /= 0.22;
 }

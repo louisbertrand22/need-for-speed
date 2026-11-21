@@ -165,6 +165,7 @@ export class GameEngine {
   private destructibleTimer = 0;
   private offRoadTimer = 0;
   private autopilot = false;
+  private autopilotStuck = 0;
 
   // garage
   private garage: GarageScene | null = null;
@@ -1046,10 +1047,12 @@ export class GameEngine {
       if (this.debugInputActive) Object.assign(pin, this.debugInput);
       if (this.autopilot) this.driveAutopilot();
     } else {
+      // parked / coasting to a stop: never hold the brake at standstill (it would select reverse)
+      const rolling = this.playerHandle.vehicle.state.speed > 1.5;
       pin.throttle = 0;
-      pin.brake = s.screen === 'results' ? 0.6 : 1;
+      pin.brake = rolling ? 0.7 : 0;
       pin.steer = 0;
-      pin.handbrake = s.screen !== 'results';
+      pin.handbrake = !rolling;
       pin.nitro = false;
     }
     pin.shiftUp = this.pendingShiftUp;
@@ -1092,7 +1095,7 @@ export class GameEngine {
       const h = handles[i];
       if (h.disabled) {
         h.input.throttle = 0;
-        h.input.brake = 1;
+        h.input.brake = h.vehicle.state.speed > 1.5 ? 1 : 0;
         h.input.handbrake = true;
         h.input.nitro = false;
       }
@@ -1509,26 +1512,33 @@ export class GameEngine {
     const route = session.built.route;
     const s = session.playerRouteS;
     const speed = Math.abs(st.speed);
-    const look = 7 + speed * 0.42;
+    const look = 5 + speed * 0.36;
     const target = route.pointAt(s + look);
     const desired = Math.atan2(target.x - st.x, target.z - st.z);
     const err = angleDiff(st.heading, desired);
-    pin.steer = clamp(-err * 2.4, -1, 1);
+    pin.steer = clamp(-err * 2.6 - st.yawRate * 0.12, -1, 1);
+    // speed plan: slowest upcoming corner, reachable with a conservative braking rate
     let vmax = 95;
-    for (let d = 10; d < 30 + speed * 2.2; d += 12) {
-      const k = Math.abs(route.curvatureAt(s + d, 16));
-      const corner = Math.sqrt(8.5 / Math.max(k, 1e-4));
-      vmax = Math.min(vmax, Math.sqrt(corner * corner + 2 * 7 * Math.max(0, d - 10)));
+    for (let d = 4; d < 40 + speed * 3.2; d += 6) {
+      const k = Math.abs(route.curvatureAt(s + d, 12));
+      const corner = Math.sqrt(7 / Math.max(k, 1e-4));
+      vmax = Math.min(vmax, Math.sqrt(corner * corner + 2 * 5 * Math.max(0, d - 8)));
     }
-    if (speed < vmax - 1) {
-      pin.throttle = 1;
+    if (speed < vmax - 1.5) {
+      pin.throttle = Math.abs(err) > 0.5 ? 0.5 : 1;
       pin.brake = 0;
-    } else if (speed > vmax + 2) {
+    } else if (speed > vmax + 0.5) {
       pin.throttle = 0;
-      pin.brake = 0.8;
+      pin.brake = 1;
     } else {
-      pin.throttle = 0.3;
+      pin.throttle = 0.15;
       pin.brake = 0;
+    }
+    // stuck against something: put the car back on the route
+    this.autopilotStuck = speed < 1 && this.store.get().screen === 'race' ? this.autopilotStuck + 1 / 60 : 0;
+    if (this.autopilotStuck > 2.5) {
+      this.autopilotStuck = 0;
+      this.respawnOnRoad();
     }
     pin.handbrake = false;
     pin.nitro = false;
@@ -1776,10 +1786,8 @@ export class GameEngine {
         if (blocks.some((b) => b.id === id)) continue;
         for (const g of vis.groups) {
           this.scene.remove(g);
-          g.traverse((o) => {
-            const m = o as THREE.Mesh;
-            if (m.geometry) m.geometry.dispose();
-          });
+          const dispose = g.userData.dispose as (() => void) | undefined;
+          if (dispose) dispose();
         }
         this.roadblockVisuals.delete(id);
       }

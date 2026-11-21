@@ -768,6 +768,7 @@ export class BodyBuilder {
     const s = this.s;
     const d = this.def;
     const cfg = DETAIL[this.detail];
+    const hStep = this.detail === 'traffic' ? Math.max(cfg.h, s.L / 11) : cfg.h;
     const rN = Math.max(d.nose.r, d.nose.rv);
     const rT = Math.max(d.tail.r, d.tail.rv);
     const out: number[] = [];
@@ -798,7 +799,7 @@ export class BodyBuilder {
     for (let i = 0; i < uniq.length - 1; i++) {
       const a = uniq[i];
       const b = uniq[i + 1];
-      const n = Math.max(1, Math.round((a - b) / cfg.h));
+      const n = Math.max(1, Math.round((a - b) / hStep));
       for (let k = 0; k < n; k++) out.push(a + ((b - a) * k) / n);
     }
     for (let k = cfg.nEnd; k >= 0; k--) {

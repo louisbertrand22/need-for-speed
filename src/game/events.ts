@@ -82,7 +82,7 @@ export const EVENT_DEFS: EventDef[] = [
     repLevel: 1,
     laps: 1,
     rivals: 0,
-    waypoints: [p(-60, 600), p(300, 600), p(300, 900), p(-300, 900), p(-300, 600)],
+    waypoints: [p(-60, 750), p(300, 750), p(300, 900), p(-150, 900), p(-150, 750)],
     closed: true,
     traffic: 0,
     timeLimit: 80,
@@ -129,7 +129,7 @@ export const EVENT_DEFS: EventDef[] = [
     repLevel: 2,
     laps: 1,
     rivals: 3,
-    waypoints: ['lanternPlaza', p(600, -600), p(600, -300), p(900, -300), p(900, 150), p(600, 150), p(600, 390)],
+    waypoints: ['lanternPlaza', p(900, -300), p(900, -600), p(600, -600), p(600, 0), p(1040, 0)],
     closed: false,
     traffic: 0.5,
   },
@@ -144,7 +144,7 @@ export const EVENT_DEFS: EventDef[] = [
     repLevel: 3,
     laps: 3,
     rivals: 4,
-    waypoints: [p(-60, 600), p(300, 600), p(300, 900), p(-300, 900), p(-300, 600)],
+    waypoints: [p(-60, 750), p(300, 750), p(300, 900), p(-450, 900), p(-450, 750)],
     closed: true,
     traffic: 0.3,
   },
@@ -269,7 +269,7 @@ export const EVENT_DEFS: EventDef[] = [
     closed: false,
     traffic: 0.1,
     traps: 4,
-    targets: { gold: 640, silver: 540, bronze: 440 },
+    targets: { gold: 500, silver: 420, bronze: 340 },
   },
   {
     id: 'sprint-baie-sommet',
@@ -515,6 +515,16 @@ export function buildEvent(world: CityWorld, def: EventDef): BuiltEvent {
   const rounded = roundCorners(simplifyCollinear(raw, def.closed), def.mode === 'drag' ? 0 : 11, def.closed);
   const pts = PolylinePath.resample(rounded, 5, def.closed);
   const route = new PolylinePath(pts, def.closed);
+
+  // sanity check: a route must never fold back on itself (a waypoint placed on a dead end)
+  for (let q = 30; q < route.length - 30; q += 10) {
+    const dh = Math.abs(route.headingAt(q + 12) - route.headingAt(q - 12));
+    const turn = Math.min(dh, Math.PI * 2 - dh);
+    if (turn > 2.6) {
+      console.warn(`[events] route of "${def.id}" makes a U-turn near s=${Math.round(q)} m`);
+      break;
+    }
+  }
 
   const startS = Math.min(GRID_LENGTH, route.length * 0.2);
   const lapLength = def.closed ? route.length : route.length - startS - 2;

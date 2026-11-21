@@ -44,7 +44,7 @@ export function addWheel(b: GeoBuilder, R: number, w: number, rimRatio: number, 
   const Rr = R * rimRatio;
   const hw = w / 2;
   const sw = R - Rr;
-  const seg = hi ? 30 : traffic ? 10 : 16;
+  const seg = hi ? 30 : traffic ? 8 : 16;
   b.channel(0).setPart(0);
 
   // --- tyre (outer bead → tread → inner bead)

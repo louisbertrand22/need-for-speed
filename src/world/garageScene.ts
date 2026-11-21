@@ -39,7 +39,7 @@ const FLOOR_MIRROR_SHADER = {
       vec3 v = normalize(cameraPosition - vWorld);
       float fres = 0.16 + 0.84 * pow(1.0 - clamp(v.y, 0.0, 1.0), 3.0);
       float fade = 1.0 - smoothstep(7.0, 12.5, length(vWorld.xz));
-      gl_FragColor = vec4(min(base, vec3(6.0)) * color * fres * fade, 1.0);
+      gl_FragColor = vec4(min(base, vec3(2.2)) * color * fres * fade, 1.0);
       #include <tonemapping_fragment>
       #include <colorspace_fragment>
     }`,
@@ -58,13 +58,13 @@ function createStudioEnvironment(renderer: THREE.WebGLRenderer): THREE.WebGLRend
   };
   add(new THREE.BoxGeometry(40, 20, 40), new THREE.Color(0.012, 0.013, 0.017), 0, 6, 0);
   // overhead strips (run along Z = along the car)
-  for (const x of [-5.5, -2, 2, 5.5]) add(new THREE.PlaneGeometry(0.9, 26), new THREE.Color(13, 13.5, 14.5), x, 9, 0, Math.PI / 2);
-  for (const z of [-9, 9]) add(new THREE.PlaneGeometry(14, 0.8), new THREE.Color(9, 9, 10), 0, 9, z, Math.PI / 2);
+  for (const x of [-5.5, -2, 2, 5.5]) add(new THREE.PlaneGeometry(0.9, 26), new THREE.Color(6, 6.2, 6.8), x, 9, 0, Math.PI / 2);
+  for (const z of [-9, 9]) add(new THREE.PlaneGeometry(14, 0.8), new THREE.Color(4.2, 4.2, 4.8), 0, 9, z, Math.PI / 2);
   // side soft boxes + warm / cool accents near the horizon
-  add(new THREE.PlaneGeometry(10, 3.5), new THREE.Color(2.4, 2.5, 2.8), -15, 3.5, 0, 0, Math.PI / 2);
-  add(new THREE.PlaneGeometry(10, 3.5), new THREE.Color(2.4, 2.5, 2.8), 15, 3.5, 0, 0, Math.PI / 2);
-  add(new THREE.PlaneGeometry(8, 1.2), new THREE.Color(3.5, 1.0, 2.6), 0, 1.6, -18);
-  add(new THREE.PlaneGeometry(8, 1.2), new THREE.Color(0.6, 2.6, 3.4), 0, 1.6, 18);
+  add(new THREE.PlaneGeometry(10, 3.5), new THREE.Color(1.1, 1.15, 1.3), -15, 3.5, 0, 0, Math.PI / 2);
+  add(new THREE.PlaneGeometry(10, 3.5), new THREE.Color(1.1, 1.15, 1.3), 15, 3.5, 0, 0, Math.PI / 2);
+  add(new THREE.PlaneGeometry(8, 1.2), new THREE.Color(1.6, 0.5, 1.2), 0, 1.6, -18);
+  add(new THREE.PlaneGeometry(8, 1.2), new THREE.Color(0.3, 1.2, 1.6), 0, 1.6, 18);
   // floor bounce
   add(new THREE.PlaneGeometry(40, 40), new THREE.Color(0.03, 0.03, 0.035), 0, -1, 0, Math.PI / 2);
   const pmrem = new THREE.PMREMGenerator(renderer);
@@ -140,7 +140,7 @@ export function createGarageScene(renderer: THREE.WebGLRenderer): GarageScene {
   mesh(floorGeo, floorMat);
   const mirrorGeo = new THREE.PlaneGeometry(ROOM * 2, ROOM * 2);
   geos.push(mirrorGeo);
-  const mirror = new Reflector(mirrorGeo, { color: 0x8f97a6, textureWidth: 1024, textureHeight: 1024, clipBias: 0.002, shader: FLOOR_MIRROR_SHADER, multisample: 2 });
+  const mirror = new Reflector(mirrorGeo, { color: 0x6a7080, textureWidth: 1024, textureHeight: 1024, clipBias: 0.002, shader: FLOOR_MIRROR_SHADER, multisample: 2 });
   mirror.rotation.x = -Math.PI / 2;
   mirror.position.y = 0.003;
   const mirrorMat = mirror.material as THREE.ShaderMaterial;
@@ -157,7 +157,7 @@ export function createGarageScene(renderer: THREE.WebGLRenderer): GarageScene {
   ringGeo.rotateX(-Math.PI / 2);
   mesh(ringGeo, metal).position.y = 0.008;
   const ledMat = new THREE.MeshBasicMaterial({ fog: false });
-  accentMats.push({ mat: ledMat, gain: 2.4 });
+  accentMats.push({ mat: ledMat, gain: 1.6 });
   const ledGeo = new THREE.RingGeometry(3.3, 3.345, 96);
   ledGeo.rotateX(-Math.PI / 2);
   mesh(ledGeo, ledMat).position.y = 0.009;
@@ -203,8 +203,8 @@ export function createGarageScene(renderer: THREE.WebGLRenderer): GarageScene {
   mesh(ceilGeo, dark).position.y = HEIGHT;
 
   // --- light bars & soft boxes (emissive geometry) ------------------------------------------------------------------
-  const barMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(5.5, 5.8, 6.4), fog: false });
-  const softMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.5, 1.6, 1.8), fog: false });
+  const barMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.3, 2.4, 2.7), fog: false });
+  const softMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.62, 0.66, 0.75), fog: false });
   const lb = new GeoBuilder();
   const hb = new GeoBuilder();
   for (const x of [-4.6, -1.7, 1.7, 4.6]) {
@@ -290,24 +290,24 @@ export function createGarageScene(renderer: THREE.WebGLRenderer): GarageScene {
     else mat.color.setRGB(gain, gain * 0.95, gain * 0.85);
     signs.push({ mesh: m, mat, gain, flicker });
   };
-  sign('APEX', 6.5, 2.0, -5.2, 4.4, -ROOM + 0.12, 0, 2.6, true);
+  sign('APEX', 6.5, 2.0, -5.2, 4.4, -ROOM + 0.12, 0, 1.7, true);
   sign('NOCTURNE GARAGE', 6, 0.8, -5.2, 2.95, -ROOM + 0.12, 0, 1.5, false, 1);
   sign('ATELIER SÉLÈNE', 5.5, 0.9, ROOM - 0.12, 4.6, -1, -Math.PI / 2, 1.9, true);
   sign('TURBO · NOS · DYNO', 5.5, 0.7, -ROOM + 0.12, 4.7, 0.5, Math.PI / 2, 1.6, false);
   sign('KAIDO SPEED SHOP', 5, 0.8, 4, 4.9, ROOM - 0.12, Math.PI, 1.7, true);
 
   // --- real lights (6) ----------------------------------------------------------------------------------------------------------
-  const hemi = new THREE.HemisphereLight(0x9fb4d8, 0x0a0a0c, 0.5);
-  const key = new THREE.SpotLight(0xffffff, 520, 22, 0.75, 0.8, 1.6);
+  const hemi = new THREE.HemisphereLight(0x9fb4d8, 0x0a0a0c, 0.22);
+  const key = new THREE.SpotLight(0xffffff, 70, 22, 0.75, 0.8, 1.6);
   key.position.set(0.5, HEIGHT - 0.6, 2.5);
   key.target.position.set(0, 0.4, 0);
-  const fillL = new THREE.PointLight(0xbfd4ff, 130, 22, 1.7);
+  const fillL = new THREE.PointLight(0xbfd4ff, 22, 22, 1.7);
   fillL.position.set(-6.5, 3.2, 4.5);
-  const fillR = new THREE.PointLight(0xffe2c4, 110, 22, 1.7);
+  const fillR = new THREE.PointLight(0xffe2c4, 18, 22, 1.7);
   fillR.position.set(6.5, 3.0, -3.5);
-  const rim = new THREE.PointLight(0xffffff, 140, 20, 1.7);
+  const rim = new THREE.PointLight(0xffffff, 24, 20, 1.7);
   rim.position.set(0, 2.6, -7.5);
-  const accent = new THREE.PointLight(0xffffff, 60, 14, 1.8);
+  const accent = new THREE.PointLight(0xffffff, 10, 14, 1.8);
   accent.position.set(-5.2, 3.6, -ROOM + 1.6);
   scene.add(hemi, key, key.target, fillL, fillR, rim, accent);
 

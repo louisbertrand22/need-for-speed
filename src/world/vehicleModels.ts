@@ -134,7 +134,7 @@ function buildBeamGeometry(lamps: readonly P3[], zNose: number): THREE.BufferGeo
       pos.push(t * half, 0.05, z);
       nor.push(0, 1, 0);
       const edge = i === 0 || i === nx || j === 0 || j === nz ? 0 : 1;
-      alpha.push(edge * Math.exp(-t * t * 3.2) * smoothstep(0, 0.14, u) * Math.pow(1 - u, 1.4) * 0.5);
+      alpha.push(edge * Math.exp(-t * t * 3.2) * (1 - t * t) * (1 - t * t) * smoothstep(0, 0.2, u) * Math.pow(1 - u, 1.6) * 0.5);
     }
   }
   for (let j = 0; j < nz; j++)
@@ -552,7 +552,7 @@ class CarModelImpl implements CarModel {
     setChannel(this.parts, CH.headR, C_HEAD, r);
     setChannel(this.parts, CH.tail, C_TAIL, (on ? 1.3 : 0.25) + brake * 5.5);
     setChannel(this.parts, CH.reverse, C_WHITE, reverse ? 3.5 : 0);
-    if (this.beamMat) this.beamMat.uniforms.uIntensity.value = on ? (this.spots.length ? 0.08 : 0.22) : 0;
+    if (this.beamMat) this.beamMat.uniforms.uIntensity.value = on ? (this.spots.length ? 0.06 : 0.16) : 0;
     if (this.beams) this.beams.visible = on;
     for (let i = 0; i < this.spots.length; i++) this.spots[i].intensity = on ? (i === 1 && d > 0.8 ? 0 : 420) : 0;
     if (this.params.police) {
