@@ -36,11 +36,11 @@
     opacity: 1;
   }
   .ax-fx-police > i:first-child {
-    background: radial-gradient(ellipse 60% 80% at 0% 50%, rgba(255, 40, 60, 0.42), transparent 62%), linear-gradient(90deg, rgba(255, 40, 60, 0.25), transparent 16%);
+    background: radial-gradient(ellipse 20% 75% at 0% 50%, rgba(255, 40, 60, 0.34), transparent 70%), linear-gradient(90deg, rgba(255, 40, 60, 0.2), transparent 5%);
     animation: ax-police 0.62s linear infinite;
   }
   .ax-fx-police > i:last-child {
-    background: radial-gradient(ellipse 60% 80% at 100% 50%, rgba(50, 120, 255, 0.45), transparent 62%), linear-gradient(270deg, rgba(50, 120, 255, 0.25), transparent 16%);
+    background: radial-gradient(ellipse 20% 75% at 100% 50%, rgba(50, 120, 255, 0.36), transparent 70%), linear-gradient(270deg, rgba(50, 120, 255, 0.2), transparent 5%);
     animation: ax-police-b 0.62s linear infinite;
   }
   .ax-fx-police:not(.is-on) > i {

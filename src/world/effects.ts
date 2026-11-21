@@ -673,13 +673,13 @@ class Portal implements PortalModel {
     const speed = this.highlighted ? 7 : 2.4;
     this.phase += dt * speed;
     const pulse = 0.78 + 0.22 * Math.sin(this.phase + time * 0.001);
-    const gain = (this.highlighted ? 1.75 : 1) * pulse * (this.locked ? 0.7 : 1);
+    const gain = (this.highlighted ? 1.3 : 1) * pulse * (this.locked ? 0.7 : 1);
     const c = this.locked ? LOCKED_COLOR : this.base;
-    this.neon.color.copy(c).multiplyScalar(2.6 * gain);
-    this.ring.color.copy(c).multiplyScalar(0.9 * gain);
-    this.iconMat.color.copy(c).multiplyScalar(2.1 * gain);
+    this.neon.color.copy(c).multiplyScalar(1.45 * gain);
+    this.ring.color.copy(c).multiplyScalar(0.6 * gain);
+    this.iconMat.color.copy(c).multiplyScalar(1.25 * gain);
     this.beam.uniforms.uColor.value.copy(c);
-    this.beam.uniforms.uIntensity.value = (this.locked ? 0.12 : 0.3) * gain;
+    this.beam.uniforms.uIntensity.value = (this.locked ? 0.08 : 0.16) * gain;
     this.spin.rotation.y += dt * (this.highlighted ? 2.6 : 1.1);
     this.spin.position.y = 2.35 + Math.sin(this.phase * 0.5) * 0.08;
   }

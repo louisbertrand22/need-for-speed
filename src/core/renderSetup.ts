@@ -13,9 +13,9 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 export const RENDER_LOOK = {
   toneMapping: THREE.ACESFilmicToneMapping,
   exposure: 1.1,
-  bloomStrength: 0.6,
-  bloomRadius: 0.55,
-  bloomThreshold: 0.9,
+  bloomStrength: 0.46,
+  bloomRadius: 0.5,
+  bloomThreshold: 0.96,
 } as const;
 
 export type RenderQuality = 'low' | 'medium' | 'high';

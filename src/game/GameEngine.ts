@@ -165,6 +165,8 @@ export class GameEngine {
   private destructibleTimer = 0;
   private offRoadTimer = 0;
   private autopilot = false;
+  /** real-time until which a pause key press is ignored (the UI just consumed that Escape) */
+  private pauseGuardUntil = 0;
   private autopilotStuck = 0;
 
   // garage
@@ -844,8 +846,8 @@ export class GameEngine {
       garagePreview: null,
     });
     this.garageYaw = 0.7;
-    this.garagePitch = 0.22;
-    this.garageDist = 6.2;
+    this.garagePitch = 0.2;
+    this.garageDist = Math.min(this.garage.maxDistance, 8.6);
     this.garageIdle = 10;
     this.refreshGarageModel();
     this.audio.setEngineActive(false);
@@ -856,6 +858,8 @@ export class GameEngine {
 
   private exitGarage(): void {
     if (this.store.get().screen !== 'garage') return;
+    this.input.consumeActions();
+    this.pauseGuardUntil = this.realTime + 0.3;
     this.store.set({ garagePreview: null });
     this.syncPlayerCar();
     this.placePlayer(GARAGE_SPOT.x, GARAGE_SPOT.z, GARAGE_SPOT.heading);
@@ -978,6 +982,7 @@ export class GameEngine {
       const driving = (s.screen === 'freeroam' || s.screen === 'countdown' || s.screen === 'race') && !s.paused && !s.mapOpen;
       switch (a) {
         case 'pause':
+          if (this.realTime < this.pauseGuardUntil) break;
           if (s.mapOpen) this.store.set({ mapOpen: false });
           else this.setPaused(!s.paused);
           break;

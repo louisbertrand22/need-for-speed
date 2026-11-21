@@ -60,6 +60,8 @@ import type { UIStore } from './store';
 
 const SAVE_KEY = 'apex-nocturne-save-v1';
 const SAVE_VERSION = 1;
+/** lifetime stats change every frame: they are written at most this often (seconds) */
+const SAVE_DELAY = 5;
 
 export function defaultSettings(): GameSettings {
   return {
@@ -222,9 +224,10 @@ export class Progression {
     return repLevelFor(this.profile.rep);
   }
 
-  /** Publish the profile to the UI and schedule a save. */
+  /** Publish the profile to the UI and save almost immediately. */
   commit(): void {
     this.dirty = true;
+    this.saveTimer = Math.max(this.saveTimer, SAVE_DELAY - 0.25);
     this.onChange(this.profile);
   }
 
@@ -237,7 +240,7 @@ export class Progression {
   update(dt: number): void {
     if (!this.dirty) return;
     this.saveTimer += dt;
-    if (this.saveTimer >= 1.5) this.flush();
+    if (this.saveTimer >= SAVE_DELAY) this.flush();
   }
 
   flush(): void {
