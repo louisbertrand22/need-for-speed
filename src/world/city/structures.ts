@@ -314,7 +314,9 @@ export function buildRamps(ctx: Ctx): void {
     b.color([0.3, 0.22, 0.03]).normal(fx, 0, fz);
     quad3(b, P(r.length, -hw, 0), P(r.length, hw, 0), P(r.length, hw, 1), P(r.length, -hw, 1));
     const c = P(r.length - 0.25, 0, 0);
-    colliders.add({ shape: 'box', x: c[0], z: c[2], hx: hw, hz: 0.2, rot: r.heading, yMin: c[1] - 1.5, yMax: c[1] + r.height * (1 - 0.3 / r.length) - 0.16, kind: 'wall' });
+    // Low enough that a car climbing the ramp (already > 1.3 m up when its nose reaches the lip)
+    // flies over it, high enough to stop a car driving into the back of the ramp at ground level.
+    colliders.add({ shape: 'box', x: c[0], z: c[2], hx: hw, hz: 0.2, rot: r.heading, yMin: c[1] - 1.5, yMax: c[1] + Math.min(1.1, r.height * 0.4), kind: 'wall' });
     // edge lights
     const g = tiles.batch('glow', r.x, r.z);
     g.color(rgb(0xff5a14, 2.4)).anim(0, 3);

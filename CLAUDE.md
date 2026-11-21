@@ -51,21 +51,29 @@ src/
 │  ├─ math.ts            clamp / damp / angles / PRNG mulberry32 / formatage
 │  └─ renderSetup.ts     Renderer WebGL + post-traitement (bloom) partagés par le jeu et les bancs d'essai
 ├─ physics/
-│  └─ vehiclePhysics.ts  Modèle arcade : couple moteur, boîte 6 rapports auto/manuelle, transfert de
-│                        masse, pneus (drift), nitro, turbo, sauts, collisions, dégâts
+│  ├─ vehiclePhysics.ts  Modèle arcade : couple moteur, boîte 6 rapports auto/manuelle, transfert de
+│  │                     masse, pneus (drift), nitro, turbo, sauts, dégâts
+│  ├─ vehicleConfig.ts   buildVehicleConfig / estimateStats (spec catalogue + tuning → paramètres)
+│  └─ collision.ts       Cercles vs boîtes orientées, voiture↔voiture, voiture↔trafic
 ├─ audio/
 │  └─ engineSound.ts     Synthétiseur Web Audio : moteur (harmoniques par cylindrée), turbo/blow-off,
 │                        pneus, nitro, sirènes, hélicoptère, impacts, sons d'interface, musique
 ├─ world/
-│  ├─ cityGenerator.ts   generateCity() → CityWorld : terrain, graphe routier, bâtiments, mobilier,
-│  │                     rampes, brise-poursuites, collisions, données de carte
+│  ├─ cityGenerator.ts   generateCity() → CityWorld : assemble les modules de city/
+│  ├─ city/              terrain + champ de hauteur, plan et graphe routier (A*), routes, quartiers,
+│  │                     structures (tunnel, pont, rampes, garage), mobilier, brise-poursuites,
+│  │                     collisions (grille spatiale), ciel et ambiance
 │  ├─ vehicleModels.ts   Modèles procéduraux : 7 voitures personnalisables, police, trafic, hélicoptère
+│  ├─ models/            Carrosseries paramétriques, jantes, matériaux (peintures), textures générées
 │  ├─ effects.ts         Particules, traces de pneus, portails, checkpoints, herses, barrières
 │  ├─ garageScene.ts     Showroom du garage (scène Three.js séparée)
 │  └─ environment.ts     Environment map nocturne (reflets sur carrosserie et asphalte mouillé)
 ├─ ai/
-│  ├─ aiDrivers.ts       Pilotes rivaux (trajectoire, rubber-banding) + police (Heat 1-5, barrages,
-│  │                     herses, hélicoptère, évasion / cooldown / arrestation)
+│  ├─ aiDrivers.ts       Point d'entrée : createRaceAI, createPoliceSystem
+│  ├─ raceAI.ts          Pilotes rivaux : trajectoire, vitesse en virage, dépassements, rubber-banding
+│  ├─ police.ts          Police : Heat 1-5, tactiques, barrages, herses, hélicoptère,
+│  │                     évasion / cooldown / arrestation
+│  ├─ steering.ts        Briques communes de pilotage (poursuite de point, pédales, palpeurs)
 │  └─ traffic.ts         Trafic civil cinématique sur les voies du graphe routier
 ├─ game/
 │  ├─ GameEngine.ts      ★ Chef d'orchestre : boucle, physique à pas fixe, collisions, caméras,
@@ -84,7 +92,9 @@ src/
 │  ├─ GarageModal.tsx    Garage : voitures, performances, style
 │  └─ WorldMapOverlay.tsx Carte du monde interactive
 └─ App.tsx               Canvas plein écran + <GameUI api={engine.api} />
-dev/                     Bancs d'essai (pages Vite hors build) : ville, modèles, UI, audio
+dev/                     Bancs d'essai servis par `npm run dev` (hors build de production) :
+                         /dev/city-preview.html, /dev/city-map.html, /dev/models-preview.html,
+                         /dev/ui-playground.html (API simulée), /dev/audio-test.html
 ```
 
 ### Conventions (voir l'en-tête de `src/core/types.ts`)
@@ -150,5 +160,13 @@ faible à haute vitesse et neutralisent les unités dans la zone de chute.
 - Zéro asset externe : géométrie en code, textures `CanvasTexture`, sons Web Audio.
 - Pas d'allocation dans les chemins chauds (physique, IA, particules, HUD).
 - Vérifier avant de livrer : `npx tsc --noEmit` et `npm run build`.
-- Outils de debug : `window.__apex` (état joueur, `fastForward(s)`, `setAutopilot(true)`,
-  `teleport(x, z, cap)`, `addMoney`, `addRep`, `renderInfo()`).
+- Outils de debug : `window.__apex` (état joueur, `fastForward(s)` = simulation sans rendu,
+  `setAutopilot(true)` = pilote de test qui suit le tracé de l'épreuve en cours,
+  `setInput({...})` / `clearInput()`, `teleport(x, z, cap)`, `addMoney`, `addRep`, `renderInfo()`).
+
+## Points connus
+
+- Les performances n'ont été mesurées qu'en rendu logiciel (Chromium headless) ; sur une machine
+  modeste, passer la qualité sur « medium » ou « low » dans les options (bloom et résolution).
+- En peloton serré avec du trafic, les rivaux peuvent s'accrocher dans le premier virage.
+- Les roues du trafic civil ne tournent pas (géométrie fusionnée pour limiter les draw calls).
