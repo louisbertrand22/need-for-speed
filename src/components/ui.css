@@ -1,0 +1,625 @@
+/* =============================================================================
+ * APEX NOCTURNE — interface kit (carbon / dark glass / neon).
+ * Plain CSS, imported by src/index.css. Everything is prefixed with `ax-`.
+ * Accent colour of a component = CSS variable --ac (set by .ax-tone-* or inline).
+ * ===========================================================================*/
+
+@layer components {
+  .ax-root {
+    --ac: #22e3ff;
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    font-family: var(--font-ui);
+    font-weight: 600;
+    color: #e8ecf4;
+    line-height: 1.15;
+    letter-spacing: 0.01em;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ax-root button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
+  .ax-pe {
+    pointer-events: auto;
+  }
+
+  .ax-tone-cyan { --ac: #22e3ff; }
+  .ax-tone-orange { --ac: #ff7a1a; }
+  .ax-tone-pink { --ac: #ff2d95; }
+  .ax-tone-green { --ac: #7dff6a; }
+  .ax-tone-violet { --ac: #b48cff; }
+  .ax-tone-red { --ac: #ff3344; }
+  .ax-tone-amber { --ac: #ffc233; }
+  .ax-tone-blue { --ac: #3a8bff; }
+  .ax-tone-steel { --ac: #9aa3b8; }
+
+  /* ---------------------------------------------------------------- text */
+  .ax-display {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-style: italic;
+    letter-spacing: 0.02em;
+    line-height: 1;
+  }
+  .ax-label {
+    font-family: var(--font-ui);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.72rem;
+    color: #9aa3b8;
+  }
+  .ax-num {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+  /* legibility over the 3D scene */
+  .ax-legible {
+    text-shadow:
+      0 0.06em 0.12em rgba(0, 0, 0, 0.95),
+      0 0 0.6em rgba(0, 0, 0, 0.75);
+  }
+  .ax-glow {
+    text-shadow:
+      0 0 0.35em color-mix(in srgb, var(--ac) 75%, transparent),
+      0 0 1.1em color-mix(in srgb, var(--ac) 45%, transparent),
+      0 0.06em 0.12em rgba(0, 0, 0, 0.9);
+  }
+  .ax-ac {
+    color: var(--ac);
+  }
+  .ax-chrome-text {
+    background: linear-gradient(180deg, #ffffff 0%, #dfe6f3 38%, #7c869c 52%, #e9eef8 60%, #aab3c6 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* ------------------------------------------------------------- surfaces */
+  .ax-panel {
+    position: relative;
+    background:
+      linear-gradient(155deg, rgba(22, 26, 40, 0.94) 0%, rgba(8, 10, 18, 0.93) 55%, rgba(5, 6, 12, 0.95) 100%);
+    border: 1px solid rgba(207, 214, 228, 0.12);
+    box-shadow:
+      0 0.9rem 2.4rem rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+  /* carbon weave overlay */
+  .ax-carbon::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.028) 0 2px, transparent 2px 5px),
+      repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.3) 0 2px, transparent 2px 5px);
+    mix-blend-mode: normal;
+    opacity: 0.9;
+    z-index: 0;
+  }
+  .ax-panel > * {
+    position: relative;
+    z-index: 1;
+  }
+  /* thin neon edge on the top of a panel */
+  .ax-edge-top::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--ac), color-mix(in srgb, var(--ac) 30%, transparent) 55%, transparent);
+    box-shadow: 0 0 0.9rem color-mix(in srgb, var(--ac) 70%, transparent);
+    z-index: 2;
+    pointer-events: none;
+  }
+  .ax-edge-left::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, var(--ac), color-mix(in srgb, var(--ac) 25%, transparent));
+    box-shadow: 0 0 0.8rem color-mix(in srgb, var(--ac) 70%, transparent);
+    z-index: 2;
+    pointer-events: none;
+  }
+  /* lightweight HUD plate (no blur: stays cheap while driving) */
+  .ax-plate {
+    position: relative;
+    background: linear-gradient(100deg, rgba(6, 8, 14, 0.86), rgba(10, 13, 22, 0.66) 70%, rgba(10, 13, 22, 0.25));
+    border-left: 3px solid var(--ac);
+    box-shadow: -0.5rem 0 1.2rem -0.5rem color-mix(in srgb, var(--ac) 55%, transparent);
+  }
+  .ax-plate-r {
+    position: relative;
+    background: linear-gradient(260deg, rgba(6, 8, 14, 0.86), rgba(10, 13, 22, 0.66) 70%, rgba(10, 13, 22, 0.25));
+    border-right: 3px solid var(--ac);
+    box-shadow: 0.5rem 0 1.2rem -0.5rem color-mix(in srgb, var(--ac) 55%, transparent);
+  }
+
+  /* angled shapes */
+  .ax-cut {
+    --cut: 0.9rem;
+    clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)));
+  }
+  .ax-cut-br {
+    --cut: 1rem;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%);
+  }
+  .ax-cut-bl {
+    --cut: 1rem;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)));
+  }
+  .ax-cut-tr {
+    --cut: 1rem;
+    clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, 0 100%);
+  }
+  .ax-para {
+    --sk: 0.7em;
+    clip-path: polygon(var(--sk) 0, 100% 0, calc(100% - var(--sk)) 100%, 0 100%);
+  }
+  .ax-para-r {
+    --sk: 0.7em;
+    clip-path: polygon(0 0, calc(100% - var(--sk)) 0, 100% 100%, var(--sk) 100%);
+  }
+  .ax-skew {
+    transform: skewX(-12deg);
+  }
+  .ax-unskew {
+    transform: skewX(12deg);
+  }
+
+  .ax-scan::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 3px);
+    z-index: 3;
+  }
+  .ax-grid-bg {
+    background-image:
+      linear-gradient(rgba(34, 227, 255, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(34, 227, 255, 0.06) 1px, transparent 1px);
+    background-size: 2rem 2rem;
+  }
+
+  /* ---------------------------------------------------------------- button */
+  .ax-btn {
+    --sk: 0.75em;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55em;
+    padding: 0.62em 1.5em;
+    min-height: 2.5em;
+    border: 0;
+    background: var(--ac);
+    color: #fff;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-style: italic;
+    font-size: 0.86rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    pointer-events: auto;
+    clip-path: polygon(var(--sk) 0, 100% 0, calc(100% - var(--sk)) 100%, 0 100%);
+    transition:
+      transform 0.12s ease,
+      filter 0.15s ease;
+    isolation: isolate;
+  }
+  .ax-btn::before {
+    content: "";
+    position: absolute;
+    inset: 1.5px;
+    z-index: -1;
+    clip-path: polygon(var(--sk) 0, 100% 0, calc(100% - var(--sk)) 100%, 0 100%);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--ac) 26%, #0a0c14) 0%, #0a0c14 100%);
+    transition: background 0.15s ease;
+  }
+  .ax-btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.28) 50%, transparent 70%);
+    transform: translateX(-120%);
+    pointer-events: none;
+  }
+  .ax-btn:hover:not(:disabled)::before {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--ac) 62%, #0a0c14) 0%, color-mix(in srgb, var(--ac) 22%, #0a0c14) 100%);
+  }
+  .ax-btn:hover:not(:disabled)::after {
+    transform: translateX(120%);
+    transition: transform 0.45s ease;
+  }
+  .ax-btn:hover:not(:disabled) {
+    filter: drop-shadow(0 0 0.5rem color-mix(in srgb, var(--ac) 70%, transparent));
+    transform: translateX(0.12rem);
+  }
+  .ax-btn:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+  .ax-btn:disabled {
+    cursor: not-allowed;
+    filter: grayscale(0.8) brightness(0.6);
+    opacity: 0.75;
+  }
+  .ax-btn:focus-visible {
+    outline: none;
+    filter: drop-shadow(0 0 0.5rem var(--ac));
+  }
+  .ax-btn-solid::before {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--ac) 92%, #fff) 0%, color-mix(in srgb, var(--ac) 70%, #05060d) 100%);
+  }
+  .ax-btn-solid {
+    color: #05060d;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+  }
+  .ax-btn-solid:hover:not(:disabled)::before {
+    background: linear-gradient(180deg, #fff 0%, var(--ac) 100%);
+  }
+  .ax-btn-sm {
+    font-size: 0.72rem;
+    padding: 0.5em 1.15em;
+    min-height: 2.2em;
+  }
+  .ax-btn-lg {
+    font-size: 1rem;
+    padding: 0.8em 2em;
+  }
+  .ax-btn-block {
+    display: flex;
+    width: 100%;
+  }
+
+  /* keycap */
+  .ax-key {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.7em;
+    height: 1.7em;
+    padding: 0 0.45em;
+    border-radius: 0.28em;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-style: normal;
+    font-size: 0.78em;
+    letter-spacing: 0.02em;
+    color: #0a0c14;
+    background: linear-gradient(180deg, #ffffff, #b9c2d6);
+    box-shadow:
+      0 0.14em 0 #5c657a,
+      0 0.2em 0.5em rgba(0, 0, 0, 0.6);
+    text-shadow: none;
+  }
+  .ax-key-dark {
+    color: #dfe6f3;
+    background: linear-gradient(180deg, #2a3044, #151927);
+    box-shadow:
+      0 0.14em 0 #05060d,
+      inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  }
+
+  /* chip / tag */
+  .ax-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    padding: 0.18em 0.7em;
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 0.74rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ac);
+    background: color-mix(in srgb, var(--ac) 14%, rgba(6, 8, 14, 0.8));
+    border: 1px solid color-mix(in srgb, var(--ac) 55%, transparent);
+    clip-path: polygon(0.45em 0, 100% 0, calc(100% - 0.45em) 100%, 0 100%);
+    white-space: nowrap;
+  }
+  .ax-chip-btn {
+    pointer-events: auto;
+    transition:
+      background 0.15s,
+      color 0.15s,
+      filter 0.15s;
+  }
+  .ax-chip-btn:hover {
+    filter: brightness(1.25);
+  }
+  .ax-chip-on {
+    color: #05060d;
+    background: var(--ac);
+    box-shadow: 0 0 0.8rem color-mix(in srgb, var(--ac) 60%, transparent);
+  }
+
+  /* scrollbars */
+  .ax-scroll {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--ac) 60%, #222738) rgba(255, 255, 255, 0.04);
+  }
+  .ax-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+  .ax-scroll::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .ax-scroll::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--ac) 60%, #222738);
+  }
+
+  /* range input */
+  .ax-range {
+    --v: 50%;
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    height: 1.4rem;
+    background: transparent;
+    cursor: pointer;
+    pointer-events: auto;
+  }
+  .ax-range::-webkit-slider-runnable-track {
+    height: 0.45rem;
+    background:
+      linear-gradient(90deg, var(--ac) 0 var(--v), rgba(255, 255, 255, 0.1) var(--v) 100%);
+    clip-path: polygon(0.3rem 0, 100% 0, calc(100% - 0.3rem) 100%, 0 100%);
+  }
+  .ax-range::-moz-range-track {
+    height: 0.45rem;
+    background:
+      linear-gradient(90deg, var(--ac) 0 var(--v), rgba(255, 255, 255, 0.1) var(--v) 100%);
+  }
+  .ax-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 0.7rem;
+    height: 1.3rem;
+    margin-top: -0.43rem;
+    background: linear-gradient(180deg, #fff, #aab3c6);
+    transform: skewX(-12deg);
+    box-shadow: 0 0 0.6rem var(--ac);
+    border: 0;
+  }
+  .ax-range::-moz-range-thumb {
+    width: 0.7rem;
+    height: 1.3rem;
+    background: linear-gradient(180deg, #fff, #aab3c6);
+    box-shadow: 0 0 0.6rem var(--ac);
+    border: 0;
+    border-radius: 0;
+  }
+  .ax-range:focus {
+    outline: none;
+  }
+
+  /* segmented bar: lit layer revealed with clip-path (set --p from JS: 0..1) */
+  .ax-seg {
+    --n: 12;
+    --gap: 0.18rem;
+    position: relative;
+    height: 0.8rem;
+    background: repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.1) 0 calc((100% + var(--gap)) / var(--n) - var(--gap)),
+      transparent calc((100% + var(--gap)) / var(--n) - var(--gap)) calc((100% + var(--gap)) / var(--n))
+    );
+    transform: skewX(-18deg);
+  }
+  .ax-seg > i {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--ac) 0 calc((100% + var(--gap)) / var(--n) - var(--gap)),
+      transparent calc((100% + var(--gap)) / var(--n) - var(--gap)) calc((100% + var(--gap)) / var(--n))
+    );
+    clip-path: inset(0 calc((1 - var(--p, 0)) * 100%) 0 0);
+    filter: drop-shadow(0 0 0.3rem color-mix(in srgb, var(--ac) 80%, transparent));
+  }
+
+  /* plain progress bar: child <i> scaled with transform */
+  .ax-bar {
+    position: relative;
+    height: 0.4rem;
+    background: rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+  }
+  .ax-bar > i {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--ac) 55%, transparent), var(--ac));
+    transform-origin: left center;
+    transform: scaleX(var(--p, 0));
+    box-shadow: 0 0 0.6rem var(--ac);
+  }
+  .ax-bar-anim > i {
+    transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  /* ------------------------------------------------------------ animations */
+  .ax-in-left { animation: ax-in-left 0.38s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .ax-in-right { animation: ax-in-right 0.38s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .ax-in-up { animation: ax-in-up 0.38s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .ax-in-down { animation: ax-in-down 0.38s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .ax-in-fade { animation: ax-in-fade 0.3s ease both; }
+  .ax-in-zoom { animation: ax-in-zoom 0.42s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .ax-out { animation: ax-out 0.28s ease both; }
+  .ax-pop { animation: ax-pop 0.3s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+  .ax-pulse { animation: ax-pulse 1.2s ease-in-out infinite; }
+  .ax-blink { animation: ax-blink 0.42s steps(2, jump-none) infinite; }
+  .ax-blink-slow { animation: ax-blink 0.9s steps(2, jump-none) infinite; }
+  .ax-shake { animation: ax-shake 0.4s ease both; }
+  .ax-spin { animation: ax-spin 1s linear infinite; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ax-root *,
+    .ax-root *::before,
+    .ax-root *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+    }
+  }
+}
+
+@keyframes ax-in-left {
+  from { opacity: 0; transform: translateX(-2.2rem) skewX(-10deg); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ax-in-right {
+  from { opacity: 0; transform: translateX(2.2rem) skewX(10deg); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ax-in-up {
+  from { opacity: 0; transform: translateY(1.6rem); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ax-in-down {
+  from { opacity: 0; transform: translateY(-1.6rem); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ax-in-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ax-in-zoom {
+  from { opacity: 0; transform: scale(1.12); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ax-out {
+  to { opacity: 0; transform: translateY(-0.8rem) scale(0.96); }
+}
+@keyframes ax-pop {
+  0% { transform: scale(1.7); filter: brightness(2.2); }
+  100% { transform: scale(1); filter: none; }
+}
+@keyframes ax-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+@keyframes ax-blink {
+  0% { opacity: 1; }
+  100% { opacity: 0.15; }
+}
+@keyframes ax-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-0.5rem); }
+  40% { transform: translateX(0.45rem); }
+  60% { transform: translateX(-0.3rem); }
+  80% { transform: translateX(0.18rem); }
+}
+@keyframes ax-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes ax-sweep {
+  from { transform: translateX(-130%) skewX(-24deg); }
+  to { transform: translateX(260%) skewX(-24deg); }
+}
+@keyframes ax-indeterminate {
+  0% { transform: translateX(-100%) scaleX(0.4); }
+  50% { transform: translateX(40%) scaleX(0.7); }
+  100% { transform: translateX(220%) scaleX(0.4); }
+}
+@keyframes ax-police {
+  0%, 44% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+@keyframes ax-police-b {
+  0%, 44% { opacity: 0; }
+  50%, 94% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes ax-count {
+  0% { opacity: 0; transform: scale(2.6) skewX(-8deg); filter: blur(0.4rem) brightness(3); }
+  18% { opacity: 1; transform: scale(1) skewX(-8deg); filter: none; }
+  70% { opacity: 1; transform: scale(0.94) skewX(-8deg); }
+  100% { opacity: 0; transform: scale(0.7) skewX(-8deg); }
+}
+@keyframes ax-go {
+  0% { opacity: 0; transform: scale(0.3) skewX(-8deg); filter: brightness(4); }
+  16% { opacity: 1; transform: scale(1.18) skewX(-8deg); filter: brightness(1.6); }
+  30% { transform: scale(1) skewX(-8deg); filter: none; }
+  75% { opacity: 1; transform: scale(1.04) skewX(-8deg); }
+  100% { opacity: 0; transform: scale(1.9) skewX(-8deg); filter: blur(0.3rem); }
+}
+@keyframes ax-flash {
+  0% { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+@keyframes ax-ring {
+  0% { opacity: 0.9; transform: scale(0.4); }
+  100% { opacity: 0; transform: scale(1.9); }
+}
+@keyframes ax-popup {
+  0% { opacity: 0; transform: translateY(0.9rem) scale(0.7) skewX(-14deg); filter: brightness(2.5); }
+  14% { opacity: 1; transform: translateY(0) scale(1.08) skewX(-6deg); filter: brightness(1.4); }
+  24% { transform: scale(1) skewX(-6deg); filter: none; }
+  82% { opacity: 1; transform: translateY(-0.2rem) scale(1) skewX(-6deg); }
+  100% { opacity: 0; transform: translateY(-1.3rem) scale(0.96) skewX(-6deg); }
+}
+@keyframes ax-banner {
+  0% { opacity: 0; transform: translateX(-4rem) skewX(-18deg); clip-path: inset(0 100% 0 0); }
+  12% { opacity: 1; transform: translateX(0) skewX(-8deg); clip-path: inset(0 0 0 0); }
+  86% { opacity: 1; transform: translateX(0.6rem) skewX(-8deg); clip-path: inset(0 0 0 0); }
+  100% { opacity: 0; transform: translateX(4rem) skewX(-18deg); clip-path: inset(0 0 0 100%); }
+}
+@keyframes ax-stamp {
+  0% { opacity: 0; transform: rotate(-11deg) scale(3.4); filter: blur(0.5rem); }
+  55% { opacity: 1; transform: rotate(-11deg) scale(0.92); filter: none; }
+  70% { transform: rotate(-11deg) scale(1.05); }
+  100% { opacity: 1; transform: rotate(-11deg) scale(1); }
+}
+@keyframes ax-quake {
+  0%, 100% { transform: none; }
+  15% { transform: translate(-0.5rem, 0.3rem); }
+  30% { transform: translate(0.4rem, -0.3rem); }
+  45% { transform: translate(-0.3rem, 0.15rem); }
+  60% { transform: translate(0.2rem, -0.1rem); }
+  75% { transform: translate(-0.1rem, 0.05rem); }
+}
+@keyframes ax-flame {
+  0%, 100% { transform: scaleY(1) skewX(-18deg); opacity: 0.95; }
+  35% { transform: scaleY(1.25) skewX(-22deg); opacity: 0.75; }
+  70% { transform: scaleY(0.9) skewX(-14deg); opacity: 1; }
+}
+@keyframes ax-dash {
+  to { stroke-dashoffset: -40; }
+}
+@keyframes ax-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-0.35rem); }
+}
+@keyframes ax-glitch {
+  0%, 92%, 100% { transform: none; opacity: 1; }
+  93% { transform: translateX(-0.25rem) skewX(-6deg); opacity: 0.8; }
+  95% { transform: translateX(0.3rem) skewX(4deg); }
+  97% { transform: translateX(-0.1rem); opacity: 0.9; }
+}
+@keyframes ax-row-move {
+  from { transform: translateY(var(--dy, 0)); }
+  to { transform: none; }
+}
+@keyframes ax-collapse {
+  to { grid-template-rows: 0fr; opacity: 0; margin-top: 0; }
+}
+@keyframes ax-heat {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.7); }
+}

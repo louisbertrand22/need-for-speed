@@ -5,10 +5,31 @@
 @import "@fontsource/rajdhani/latin-500.css";
 @import "@fontsource/rajdhani/latin-600.css";
 @import "@fontsource/rajdhani/latin-700.css";
+@import "./components/ui.css";
 
 @theme {
   --font-display: "Orbitron", ui-sans-serif, system-ui, sans-serif;
   --font-ui: "Rajdhani", ui-sans-serif, system-ui, sans-serif;
+
+  /* neon accents */
+  --color-neon-cyan: #22e3ff;
+  --color-neon-orange: #ff7a1a;
+  --color-neon-pink: #ff2d95;
+  --color-neon-green: #7dff6a;
+  --color-neon-violet: #b48cff;
+  --color-neon-red: #ff3344;
+  --color-neon-amber: #ffc233;
+  --color-neon-blue: #3a8bff;
+
+  /* dark glass / carbon surfaces */
+  --color-ink-950: #04050a;
+  --color-ink-900: #080a12;
+  --color-ink-800: #0e111c;
+  --color-ink-700: #161a28;
+  --color-ink-600: #222738;
+  --color-ink-500: #323950;
+  --color-chrome: #cfd6e4;
+  --color-steel: #8b94a8;
 }
 
 html,
@@ -23,4 +44,12 @@ body,
   font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
   user-select: none;
+}
+
+/*
+ * One scale variable for the whole interface: every Tailwind size is expressed in rem,
+ * so the root font-size IS the UI scale (13 px at 1280×720, 16 px at 1920×1080, 19 px at 1440p).
+ */
+html {
+  font-size: clamp(11px, min(calc(7px + 0.8333vh), calc(7px + 0.4688vw)), 26px);
 }
