@@ -653,7 +653,9 @@ class Portal implements PortalModel {
     this.icon = new THREE.Mesh(iconGeometry(kind), this.iconMat);
     this.lock = new THREE.Mesh(iconGeometry('lock'), this.iconMat);
     this.lock.visible = false;
-    this.spin.position.y = 2.35;
+    // high enough for the car and the chase camera to pass underneath
+    this.spin.position.y = 4.4;
+    this.spin.scale.setScalar(0.8);
     this.spin.add(this.icon, this.lock);
     this.group.add(this.spin);
     this.update(0, 0);
@@ -681,7 +683,7 @@ class Portal implements PortalModel {
     this.beam.uniforms.uColor.value.copy(c);
     this.beam.uniforms.uIntensity.value = (this.locked ? 0.08 : 0.16) * gain;
     this.spin.rotation.y += dt * (this.highlighted ? 2.6 : 1.1);
-    this.spin.position.y = 2.35 + Math.sin(this.phase * 0.5) * 0.08;
+    this.spin.position.y = 4.4 + Math.sin(this.phase * 0.5) * 0.08;
   }
 
   dispose(): void {
