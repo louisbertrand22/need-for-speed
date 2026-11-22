@@ -8,6 +8,7 @@ import type { PathProjection } from '../core/path';
 import type {
   AIHost,
   ActionResult,
+  CarSpec,
   ActiveEventInfo,
   CarVisuals,
   CityWorld,
@@ -396,13 +397,18 @@ const RIVAL_TUNING: TuneLevel[][] = [
   [2, 3],
 ];
 const RIVAL_SKILL: [number, number][] = [
-  [0.42, 0.62],
-  [0.5, 0.7],
+  [0.22, 0.42],
+  [0.42, 0.64],
   [0.6, 0.8],
   [0.7, 0.88],
   [0.8, 0.97],
 ];
 const RUBBER_BAND = [0.75, 0.65, 0.55, 0.5, 0.42];
+/**
+ * Beginner cushion (metres) per difficulty: the rivals are told the player is this much further
+ * back than they really are, so in easy events they lift earlier and push later.
+ */
+const EASY_CUSHION = [260, 150, 60, 0, 0];
 
 const DRIFT_BASE_RATE = 260; // points per second at 30° / 80 km/h
 const COMBO_GRACE = 1.6; // seconds without drifting before the combo is banked
@@ -549,9 +555,11 @@ export class RaceSession {
       const names = RIVAL_NAMES.slice();
       const setups: RivalSetup[] = [];
       const rivalSlots = def.mode === 'drag' ? slots.slice(1) : slots.slice(0, n - 1);
+      // Drag racing is a duel of equals: opponents are picked for a 0-100 time close to the player's car.
+      const dragField = def.mode === 'drag' ? this.matchedDragField(def.rivals, tier) : null;
       for (let i = 0; i < def.rivals; i++) {
-        const spec = getCarSpec(pool[Math.floor(rng() * pool.length)]);
-        const level = RIVAL_TUNING[tier][rng() < 0.5 ? 0 : 1];
+        const spec = dragField ? dragField[i].spec : getCarSpec(pool[Math.floor(rng() * pool.length)]);
+        const level = dragField ? dragField[i].level : RIVAL_TUNING[tier][rng() < 0.5 ? 0 : 1];
         const tuning: TuningState = {
           engine: level,
           turbo: level,
@@ -607,6 +615,33 @@ export class RaceSession {
     this.refreshGates();
     this.writeStaticTelemetry();
     this.updateStandings(true);
+  }
+
+  /** Catalogue cars (any tuning level) whose acceleration is closest to the player's current car. */
+  private matchedDragField(count: number, tier: number): { spec: CarSpec; level: TuneLevel }[] {
+    const mine = this.host.ai.player.vehicle.config.estZeroToHundred;
+    // slightly slower → slightly quicker than the player; harder events shift the whole field
+    const targets = [1.07, 1.02, 0.98, 0.95].map((k) => mine * (k - tier * 0.012));
+    const candidates: { spec: CarSpec; level: TuneLevel; t: number }[] = [];
+    for (const spec of CAR_CATALOG) {
+      for (const level of [0, 1, 2, 3] as TuneLevel[]) {
+        const tuning: TuningState = { engine: level, turbo: level, transmission: level, suspension: level, brakes: level, tires: level, nitro: level };
+        candidates.push({ spec, level, t: this.host.ai.buildConfig(spec, tuning).estZeroToHundred });
+      }
+    }
+    const out: { spec: CarSpec; level: TuneLevel }[] = [];
+    for (let i = 0; i < count; i++) {
+      const target = targets[i % targets.length];
+      let best = candidates[0];
+      for (const c of candidates) {
+        // prefer a different model from the ones already picked
+        const penalty = out.some((o) => o.spec.id === c.spec.id) ? 0.25 : 0;
+        const bestPenalty = out.some((o) => o.spec.id === best.spec.id) ? 0.25 : 0;
+        if (Math.abs(c.t - target) + penalty < Math.abs(best.t - target) + bestPenalty) best = c;
+      }
+      out.push({ spec: best.spec, level: best.level });
+    }
+    return out;
   }
 
   private makeRacer(name: string, isPlayer: boolean, handle: VehicleHandle): Racer {
@@ -777,7 +812,7 @@ export class RaceSession {
     }
 
     this.trackRacers();
-    host.raceAI.update(dt, this.player.u);
+    host.raceAI.update(dt, this.player.u - (this.def.mode === 'drag' ? 0 : EASY_CUSHION[this.def.difficulty - 1]));
 
     if (this.phase === 'racing') {
       this.updatePlayerGates();

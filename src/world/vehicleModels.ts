@@ -554,7 +554,7 @@ class CarModelImpl implements CarModel {
     setChannel(this.parts, CH.reverse, C_WHITE, reverse ? 3.5 : 0);
     if (this.beamMat) this.beamMat.uniforms.uIntensity.value = on ? (this.spots.length ? 0.06 : 0.16) : 0;
     if (this.beams) this.beams.visible = on;
-    for (let i = 0; i < this.spots.length; i++) this.spots[i].intensity = on ? (i === 1 && d > 0.8 ? 0 : 420) : 0;
+    for (let i = 0; i < this.spots.length; i++) this.spots[i].intensity = on ? (i === 1 && d > 0.8 ? 0 : 150) : 0;
     if (this.params.police) {
       let red = 0.15;
       let blue = 0.15;

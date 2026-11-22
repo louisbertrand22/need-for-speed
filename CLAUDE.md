@@ -161,12 +161,17 @@ faible à haute vitesse et neutralisent les unités dans la zone de chute.
 - Pas d'allocation dans les chemins chauds (physique, IA, particules, HUD).
 - Vérifier avant de livrer : `npx tsc --noEmit` et `npm run build`.
 - Outils de debug : `window.__apex` (état joueur, `fastForward(s)` = simulation sans rendu,
-  `setAutopilot(true)` = pilote de test qui suit le tracé de l'épreuve en cours,
-  `setInput({...})` / `clearInput()`, `teleport(x, z, cap)`, `addMoney`, `addRep`, `renderInfo()`).
+  `setAutopilot(on, nitro, gLatéral, gFreinage)` = pilote de test qui suit le tracé de l'épreuve en
+  cours, `setAutopilotRoute('ring', kmh)` = le fait tourner sur le périphérique en balade (utile
+  pour tester les poursuites), `setInput({...})` / `clearInput()`, `teleport(x, z, cap)`,
+  `addMoney`, `addRep`, `renderInfo()`).
 
 ## Points connus
 
 - Les performances n'ont été mesurées qu'en rendu logiciel (Chromium headless) ; sur une machine
   modeste, passer la qualité sur « medium » ou « low » dans les options (bloom et résolution).
 - En peloton serré avec du trafic, les rivaux peuvent s'accrocher dans le premier virage.
+- L'équilibrage n'a été réglé qu'avec le pilote de test (qui suit l'axe de la route) : drag et sprints
+  de niveau 1-2 sont gagnables avec la voiture de départ ; les circuits restent à valider à la main.
+  Leviers : `RIVAL_SKILL`, `RUBBER_BAND`, `EASY_CUSHION` (gameModes.ts) et `RACE_TUNING` (ai/raceAI.ts).
 - Les roues du trafic civil ne tournent pas (géométrie fusionnée pour limiter les draw calls).

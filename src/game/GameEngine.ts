@@ -6,8 +6,9 @@
  * vehicles, AI, particles, audio) and the GameAPI bridge consumed by the UI.
  * ===========================================================================*/
 import * as THREE from 'three';
-import { GARAGE_SPOT } from '../core/layout';
+import { GARAGE_SPOT, ringPolyline } from '../core/layout';
 import { angleDiff, clamp, damp, smoothstep } from '../core/math';
+import { PolylinePath } from '../core/path';
 import { createGameRenderer, createPostFx, pixelRatioFor } from '../core/renderSetup';
 import type { PostFx, RenderQuality } from '../core/renderSetup';
 import { MIRROR_RECT } from '../core/types';
@@ -42,6 +43,7 @@ import type {
   TunePart,
   TuningState,
   UiSound,
+  Vec2,
   VehicleConfig,
   VehicleHandle,
   VehicleTag,
@@ -165,6 +167,13 @@ export class GameEngine {
   private destructibleTimer = 0;
   private offRoadTimer = 0;
   private autopilot = false;
+  private autopilotNitro = false;
+  private autopilotLat = 7;
+  private autopilotBrake = 5;
+  /** free-roam route followed by the debug autopilot (null = none) */
+  private debugRoute: PolylinePath | null = null;
+  private debugRouteS = 0;
+  private debugRouteSpeed = 30;
   /** real-time until which a pause key press is ignored (the UI just consumed that Escape) */
   private pauseGuardUntil = 0;
   private autopilotStuck = 0;
@@ -1511,11 +1520,22 @@ export class GameEngine {
   /** Debug / attract autopilot: follows the current race route. */
   private driveAutopilot(): void {
     const session = this.session;
-    if (!session || session.done) return;
     const pin = this.playerHandle.input;
     const st = this.playerHandle.vehicle.state;
-    const route = session.built.route;
-    const s = session.playerRouteS;
+    let route: PolylinePath;
+    let s: number;
+    if (session && !session.done) {
+      route = session.built.route;
+      s = session.playerRouteS;
+    } else if (!session && this.debugRoute) {
+      // free roam: follow the debug route (hinted projection keeps the car on its lap)
+      route = this.debugRoute;
+      const proj = route.project(st.x, st.z, this.debugRouteS, 120);
+      if (proj.dist < 60) this.debugRouteS = proj.s;
+      s = this.debugRouteS;
+    } else {
+      return;
+    }
     const speed = Math.abs(st.speed);
     const look = 5 + speed * 0.36;
     const target = route.pointAt(s + look);
@@ -1523,11 +1543,11 @@ export class GameEngine {
     const err = angleDiff(st.heading, desired);
     pin.steer = clamp(-err * 2.6 - st.yawRate * 0.12, -1, 1);
     // speed plan: slowest upcoming corner, reachable with a conservative braking rate
-    let vmax = 95;
+    let vmax = session ? 95 : this.debugRouteSpeed;
     for (let d = 4; d < 40 + speed * 3.2; d += 6) {
       const k = Math.abs(route.curvatureAt(s + d, 12));
-      const corner = Math.sqrt(7 / Math.max(k, 1e-4));
-      vmax = Math.min(vmax, Math.sqrt(corner * corner + 2 * 5 * Math.max(0, d - 8)));
+      const corner = Math.sqrt(this.autopilotLat / Math.max(k, 1e-4));
+      vmax = Math.min(vmax, Math.sqrt(corner * corner + 2 * this.autopilotBrake * Math.max(0, d - 8)));
     }
     if (speed < vmax - 1.5) {
       pin.throttle = Math.abs(err) > 0.5 ? 0.5 : 1;
@@ -1540,14 +1560,16 @@ export class GameEngine {
       pin.brake = 0;
     }
     // stuck against something: put the car back on the route
-    this.autopilotStuck = speed < 1 && this.store.get().screen === 'race' ? this.autopilotStuck + 1 / 60 : 0;
+    const moving = this.store.get().screen === 'race' || (!session && this.debugRoute !== null);
+    this.autopilotStuck = speed < 1 && moving ? this.autopilotStuck + 1 / 60 : 0;
     if (this.autopilotStuck > 2.5) {
       this.autopilotStuck = 0;
       this.respawnOnRoad();
     }
     pin.handbrake = false;
-    pin.nitro = false;
-    if (session.def.mode === 'drag' && st.rpm > this.playerHandle.vehicle.config.perfectShiftLo + 100 && st.gear < 6 && !st.shifting) {
+    const drag = session !== null && session.def.mode === 'drag';
+    pin.nitro = this.autopilotNitro && pin.throttle === 1 && (drag ? st.gear >= 2 : Math.abs(err) < 0.08 && speed > 14);
+    if (session && session.def.mode === 'drag' && st.rpm > this.playerHandle.vehicle.config.perfectShiftLo + 100 && st.gear < 6 && !st.shifting) {
       this.pendingShiftUp = true;
     }
   }
@@ -1970,8 +1992,20 @@ export class GameEngine {
       session: () => this.session,
       handles: () => this.handles,
       renderInfo: () => ({ calls: this.renderer.info.render.calls, triangles: this.renderer.info.render.triangles }),
-      setAutopilot: (on: boolean) => {
+      setAutopilot: (on: boolean, useNitro = false, lateralG = 0.7, brakeG = 0.5) => {
         this.autopilot = on;
+        this.autopilotNitro = useNitro;
+        this.autopilotLat = lateralG * 9.81;
+        this.autopilotBrake = brakeG * 9.81;
+      },
+      /** Free-roam autopilot: loop on the ring highway ('ring') or follow given points; null = off. */
+      setAutopilotRoute: (route: 'ring' | Vec2[] | null, maxKmh = 110, closed = true) => {
+        this.debugRoute = route === null ? null : new PolylinePath(route === 'ring' ? ringPolyline(15) : route, closed);
+        this.debugRouteSpeed = maxKmh / 3.6;
+        if (this.debugRoute) {
+          const st = this.playerHandle.vehicle.state;
+          this.debugRouteS = this.debugRoute.project(st.x, st.z).s;
+        }
       },
       teleport: (x: number, z: number, heading = 0) => this.placePlayer(x, z, heading),
       /** Run the simulation without rendering. */
